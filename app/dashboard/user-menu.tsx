@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, User } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 type UserMenuProps = {
   displayName: string;
@@ -34,28 +34,39 @@ export function UserMenu({ displayName, logoutAction }: UserMenuProps) {
     };
   }, []);
 
+  // Get initials from display name
+  const getInitials = (name: string) => {
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex items-center space-x-2 rounded-full bg-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/30"
+        className="flex items-center space-x-2 text-sm font-medium transition hover:opacity-80"
         aria-expanded={isOpen}
         aria-haspopup="menu"
       >
-        <User className="h-4 w-4" />
-        <span>{displayName}</span>
+        <span className="hidden sm:inline">{displayName}</span>
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-[#A64D4D]">
+          {getInitials(displayName)}
+        </div>
         <ChevronDown
           className={`h-4 w-4 transition ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl bg-white py-2 text-sm text-gray-700 shadow-xl">
+        <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg bg-white py-2 text-sm text-gray-700 shadow-xl">
           <form action={logoutAction}>
             <button
               type="submit"
-              className="block w-full px-4 py-2 text-left font-medium transition hover:bg-gray-100"
+              className="block w-full px-4 py-2 text-left font-medium transition hover:text-red-600"
             >
               Logout
             </button>
