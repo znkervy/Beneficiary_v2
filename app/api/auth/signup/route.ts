@@ -2,6 +2,18 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Raise Next.js body size limit to accommodate ID file uploads up to 5 MB
+export const maxDuration = 30;
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'pdf']);
+const MIME_MAP: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  pdf: 'application/pdf',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -29,6 +41,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate file size before buffering (cheap check)
+    if (idFile.size > MAX_FILE_BYTES) {
+      return NextResponse.json({ error: 'ID file must be under 5 MB.' }, { status: 400 });
+    }
+
+    // Validate and sanitise file extension — never trust client-supplied name or MIME type
+    const rawExt = idFile.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_EXTENSIONS.has(rawExt)) {
+      return NextResponse.json(
+        { error: 'ID must be a JPG, PNG, or PDF file.' },
+        { status: 400 }
+      );
+    }
+    const safeExt = rawExt;
+    const contentType = MIME_MAP[safeExt]!;
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -54,12 +82,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: 400 });
+      console.error('[signup] auth.signUp error:', authError.message);
+      return NextResponse.json(
+        { error: 'Registration failed. Please check your details and try again.' },
+        { status: 400 }
+      );
     }
 
     if (!authData.user?.id) {
       return NextResponse.json(
-        { error: 'Failed to create user account' },
+        { error: 'Failed to create user account. Please try again.' },
         { status: 400 }
       );
     }
@@ -67,20 +99,24 @@ export async function POST(request: NextRequest) {
     const userId = authData.user.id;
 
     // Step 2: Upload ID file to beneficiary-ids storage bucket
+    // Use only the sanitised extension — never embed the user-supplied filename
+    const storageKey = `${userId}/${Date.now()}.${safeExt}`;
     const fileBuffer = await idFile.arrayBuffer();
-    const storageKey = `${userId}/${Date.now()}-${idFile.name}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('beneficiary-ids')
       .upload(storageKey, fileBuffer, {
-        contentType: idFile.type,
+        contentType,
         upsert: false,
       });
 
     if (uploadError) {
+      console.error('[signup] storage upload error:', uploadError.message);
+      // Compensating action: remove the orphaned auth user
+      await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
-        { error: `ID upload failed: ${uploadError.message}` },
-        { status: 400 }
+        { error: 'ID upload failed. Please try again.' },
+        { status: 500 }
       );
     }
 
@@ -100,13 +136,17 @@ export async function POST(request: NextRequest) {
       });
 
     if (profileError) {
+      console.error('[signup] profile insert error:', profileError.message);
+      // Compensating actions: remove orphaned auth user and uploaded file
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      await supabaseAdmin.storage.from('beneficiary-ids').remove([storageKey]);
       return NextResponse.json(
-        { error: `Profile creation failed: ${profileError.message}` },
-        { status: 400 }
+        { error: 'Account setup failed. Please try again.' },
+        { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';
     return NextResponse.json({ error: message }, { status: 500 });
