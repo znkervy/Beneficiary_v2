@@ -19,6 +19,7 @@ const FullField = ({ children }: { children: React.ReactNode }) => (
 );
 
 export default function SignupPage() {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [agreed, setAgreed]           = useState(false);
   const [idFile, setIdFile]           = useState<File | null>(null);
   const [error, setError]             = useState<string | null>(null);
@@ -40,6 +41,7 @@ export default function SignupPage() {
     if (f && f.size > 5 * 1024 * 1024) {
       setError("File must be under 5MB.");
       setIdFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
     setError(null);
@@ -325,6 +327,7 @@ export default function SignupPage() {
                   JPG, PNG, PDF (Max 5MB)
                 </p>
                 <input
+                  ref={fileInputRef}
                   id="id-upload"
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
