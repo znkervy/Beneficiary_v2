@@ -1,13 +1,25 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
-  Landmark, IdCard, User, ShieldCheck, HelpCircle
+  Landmark, IdCard, User, ShieldCheck, HelpCircle, Plus, Edit, Trash2, CheckCircle
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_holder: string;
+  account_number: string;
+  is_primary: boolean;
+  is_verified: boolean;
+  created_at: string;
+  beneficiary_id: string;
+}
 
 interface BankingEvent {
   id: string;
@@ -24,8 +36,8 @@ interface BankingEvent {
 const BANKING_EVENTS: BankingEvent[] = [
   {
     id: "1",
-    icon: "link",
-    iconBg: "rgba(254,160,150,0.2)",
+    icon: "🔗",
+    iconBg: "rgba(254,160,150,0.15)",
     iconColor: "#934841",
     label: "Chase Bank Linked",
     date: "Oct 12, 2023",
@@ -33,8 +45,8 @@ const BANKING_EVENTS: BankingEvent[] = [
   },
   {
     id: "2",
-    icon: "domain_verification",
-    iconBg: "rgba(255,223,152,0.3)",
+    icon: "✓",
+    iconBg: "rgba(255,223,152,0.4)",
     iconColor: "#775a00",
     label: "Micro-deposit Verification",
     date: "Oct 10, 2023",
@@ -42,8 +54,8 @@ const BANKING_EVENTS: BankingEvent[] = [
   },
   {
     id: "3",
-    icon: "error_outline",
-    iconBg: "rgba(255,218,214,0.4)",
+    icon: "!",
+    iconBg: "rgba(255,218,214,0.5)",
     iconColor: "#ba1a1a",
     label: "Failed Connection (Wells Fargo)",
     date: "Sep 28, 2023",
@@ -57,37 +69,80 @@ const StatusBadge: React.FC<{ status: BankingEvent["status"] }> = ({
   status,
 }) =>
   status === "Completed" ? (
-    <span className="px-3 py-1 bg-[#f4dddc] text-[#79342e] rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+    <span style={{
+      padding: "0.25rem 0.75rem",
+      background: "#f4dddc",
+      color: "#79342e",
+      borderRadius: "999px",
+      fontSize: "0.625rem",
+      fontWeight: 800,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+    }}>
       Completed
     </span>
   ) : (
-    <span className="px-3 py-1 bg-[#ffdad6]/60 text-[#ba1a1a] rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+    <span style={{
+      padding: "0.25rem 0.75rem",
+      background: "rgba(255,218,214,0.6)",
+      color: "#ba1a1a",
+      borderRadius: "999px",
+      fontSize: "0.625rem",
+      fontWeight: 800,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+    }}>
       Rejected
     </span>
   );
 
 const EventRow: React.FC<{ event: BankingEvent }> = ({ event }) => (
-  <tr className="hover:bg-[#fff0ef] transition-colors group">
-    <td className="px-8 py-6">
-      <div className="flex items-center space-x-4">
+  <tr style={{ borderBottom: `1px solid ${S.outlineVariant}1a` }}>
+    <td style={{ padding: "1.5rem 2rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm"
-          style={{ background: event.iconBg, color: event.iconColor }}
+          style={{
+            width: "2.5rem",
+            height: "2.5rem",
+            borderRadius: "999px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: event.iconBg,
+            color: event.iconColor,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            fontSize: "1.125rem",
+            fontWeight: 700,
+          }}
         >
-          <span className="material-symbols-outlined text-lg">{event.icon}</span>
+          {event.icon}
         </div>
-        <span className="font-bold text-[#241918]">{event.label}</span>
+        <span style={{ fontWeight: 700, color: S.onSurface, fontSize: "0.9375rem" }}>{event.label}</span>
       </div>
     </td>
-    <td className="px-8 py-6 text-sm font-medium text-[#554240]">
+    <td style={{ padding: "1.5rem 2rem", fontSize: "0.875rem", fontWeight: 500, color: "#554240" }}>
       {event.date}
     </td>
-    <td className="px-8 py-6">
+    <td style={{ padding: "1.5rem 2rem" }}>
       <StatusBadge status={event.status} />
     </td>
-    <td className="px-8 py-6 text-right">
-      <button className="text-stone-300 group-hover:text-[#97453e] transition-colors">
-        <span className="material-symbols-outlined">info</span>
+    <td style={{ padding: "1.5rem 2rem", textAlign: "right" }}>
+      <button 
+        type="button"
+        style={{ 
+          color: "#d4d4d8", 
+          background: "none", 
+          border: "none", 
+          cursor: "pointer", 
+          padding: "0.5rem",
+          borderRadius: "999px",
+          display: "inline-flex",
+          transition: "color 0.15s"
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = S.primary)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "#d4d4d8")}
+      >
+        <span style={{ fontSize: "1.125rem" }}>ℹ</span>
       </button>
     </td>
   </tr>
@@ -103,44 +158,60 @@ interface NavItemProps {
   href: string;
 }
 
-const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => (
-  <a
-    href={href}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "0.75rem",
-      padding: collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem",
-      justifyContent: collapsed ? "center" : "flex-start",
-      borderRadius: active ? "999px 0 0 999px" : "999px",
-      marginLeft: active ? "1rem" : (collapsed ? "0.75rem" : 0),
-      marginRight: active ? 0 : (collapsed ? "0.75rem" : 0),
-      background: active ? S.surfaceContainerLowest : "transparent",
-      color: active ? S.primary : "#78716c",
-      fontWeight: active ? 700 : 500,
-      fontSize: "0.875rem",
-      textDecoration: "none",
-      boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-      transition: "color 0.15s, background 0.15s, transform 0.15s",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-    }}
-    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
-    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
-  >
-    {icon}
-    {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
-  </a>
-));
+const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => {
+  const paddingValue = collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem";
+  
+  let marginLeftValue: string | number = 0;
+  if (active) {
+    marginLeftValue = "1rem";
+  } else if (collapsed) {
+    marginLeftValue = "0.75rem";
+  }
+  
+  let marginRightValue: string | number = 0;
+  if (!active && collapsed) {
+    marginRightValue = "0.75rem";
+  }
+  
+  return (
+    <a
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: paddingValue,
+        justifyContent: collapsed ? "center" : "flex-start",
+        borderRadius: active ? "999px 0 0 999px" : "999px",
+        marginLeft: marginLeftValue,
+        marginRight: marginRightValue,
+        background: active ? S.surfaceContainerLowest : "transparent",
+        color: active ? S.primary : "#78716c",
+        fontWeight: active ? 700 : 500,
+        fontSize: "0.875rem",
+        textDecoration: "none",
+        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+        transition: "color 0.15s, background 0.15s, transform 0.15s",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+      }}
+      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
+      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
+    >
+      {icon}
+      {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
+    </a>
+  );
+});
 NavItem.displayName = "NavItem";
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard size={20} />, label: "Overview", active: false, href: "/dashboard" },
   { icon: <CreditCard size={20} />, label: "Funds", active: false, href: "/fund-management" },
   { icon: <Landmark size={20} />, label: "Banking", active: true, href: "/banking-details" },
-  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/dashboard" },
-  { icon: <User size={20} />, label: "Profile", active: false, href: "/dashboard" },
-  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/dashboard" },
+  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/identity-verification" },
+  { icon: <User size={20} />, label: "Profile", active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/security-settings" },
 ];
 
 const SIDEBAR_W_EXPANDED = 220;
@@ -150,8 +221,81 @@ const SIDEBAR_W_COLLAPSED = 80;
 
 export default function BankingDetailsPage() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const supabase = createClient();
+  
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
+
+  // Fetch bank accounts on mount
+  useEffect(() => {
+    fetchBankAccounts();
+  }, []);
+
+  const fetchBankAccounts = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error("No user found");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("bank_accounts")
+        .select("*")
+        .eq("beneficiary_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching bank accounts:", error);
+      } else {
+        setBankAccounts(data || []);
+      }
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (accountId: string) => {
+    if (!confirm("Are you sure you want to remove this bank account?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("bank_accounts")
+        .delete()
+        .eq("id", accountId);
+
+      if (error) {
+        console.error("Error deleting account:", error);
+        alert("Failed to remove bank account");
+      } else {
+        // Refresh the list
+        fetchBankAccounts();
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      alert("Failed to remove bank account");
+    }
+  };
+
+  const maskAccountNumber = (accountNumber: string) => {
+    if (accountNumber.length <= 4) return accountNumber;
+    return "•••• " + accountNumber.slice(-4);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
 
   return (
     <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -202,6 +346,92 @@ export default function BankingDetailsPage() {
             <Bell size={22} />
             <span style={{ position: "absolute", top: "0.5rem", right: "0.5rem", width: "0.5rem", height: "0.5rem", background: S.error, borderRadius: "999px" }} />
           </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              style={{
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "999px",
+                background: S.primaryContainer,
+                border: `2px solid ${S.primary}`,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "transform 0.15s",
+                overflow: "hidden",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <User size={20} style={{ color: S.primary }} />
+            </button>
+
+            {profileOpen && (
+              <>
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 40,
+                  }}
+                  onClick={() => setProfileOpen(false)}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "3.5rem",
+                    right: 0,
+                    width: "16rem",
+                    background: S.surfaceContainerLowest,
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                    zIndex: 50,
+                    border: `1px solid ${S.outlineVariant}33`,
+                  }}
+                >
+                  <div style={{ padding: "1.5rem", borderBottom: `1px solid ${S.outlineVariant}1a` }}>
+                    <p style={{ fontWeight: 700, color: S.onSurface, fontSize: "0.9375rem", margin: "0 0 0.25rem" }}>
+                      Beneficiary
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: S.onSurfaceVariant, margin: 0 }}>
+                      Beneficiary Account
+                    </p>
+                  </div>
+                  <div style={{ padding: "0.5rem" }}>
+                    <a
+                      href="/login"
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem 1rem",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        color: S.error,
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        borderRadius: "0.5rem",
+                        transition: "background 0.15s",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                        textDecoration: "none",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = `${S.errorContainer}33`)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span style={{ fontSize: "1.25rem" }}>→</span>
+                      <span>Log Out</span>
+                    </a>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -282,141 +512,254 @@ export default function BankingDetailsPage() {
           }}
         >
           {/* Header */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl font-extrabold text-[#241918] tracking-tight">
-                Banking Details
-              </h1>
-              <p className="text-lg text-[#554240] max-w-2xl leading-relaxed">
-                Manage your verified bank accounts for disbursements. Your
-                security is our highest priority.
-              </p>
-            </div>
-            <a href="/connect-bank" className="bg-[#F28D83] text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
-              <span className="material-symbols-outlined">add_circle</span>
-              Connect New Bank
-            </a>
+          <header style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <h1 style={{ fontSize: "2.25rem", fontWeight: 800, color: S.onSurface, letterSpacing: "-0.02em", marginBottom: "0.5rem", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+              Banking Details
+            </h1>
+            <p style={{ color: S.onSurfaceVariant, fontSize: "1.125rem", maxWidth: "40rem", lineHeight: 1.5 }}>
+              Manage your verified bank accounts for disbursements. Your security is our highest priority.
+            </p>
           </header>
 
           {/* Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="space-y-8 lg:col-span-12 max-w-4xl mx-auto w-full">
-              {/* Primary Account Card */}
-              <div className="bg-white rounded-xl p-8 relative overflow-hidden group shadow-[0px_12px_32px_rgba(151,69,62,0.06)]">
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#f28d83]/5 rounded-full group-hover:scale-110 transition-transform" />
-                <div className="absolute top-6 right-8">
-                  <span className="bg-[#f4dddc] text-[#79342e] px-4 py-1.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase flex items-center gap-1.5">
-                    <span
-                      className="material-symbols-outlined text-sm"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      verified
-                    </span>
-                    Verified
-                  </span>
-                </div>
-                <div className="flex items-start space-x-6 relative z-10">
-                  <div className="w-16 h-16 rounded-xl bg-[#fae3e1] flex items-center justify-center text-[#97453e] shadow-sm">
-                    <span className="material-symbols-outlined text-4xl">
-                      account_balance
-                    </span>
-                  </div>
-                  <div className="space-y-6 flex-1">
-                    <div>
-                      <h3 className="text-2xl font-extrabold text-[#241918] tracking-tight">
-                        Chase Bank
-                      </h3>
-                      <p className="text-[#554240] text-sm font-medium">
-                        Primary Disbursement Account
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-8">
-                      <div>
-                        <p className="text-[10px] font-extrabold text-[#554240]/50 uppercase tracking-widest mb-1">
-                          Account Holder
-                        </p>
-                        <p className="font-bold text-[#241918]">Jane Doe</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-extrabold text-[#554240]/50 uppercase tracking-widest mb-1">
-                          Account Number
-                        </p>
-                        <p className="font-bold text-[#241918]">•••• 4219</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-8 flex items-center space-x-6 border-t border-[#dac1be]/10 pt-6">
-                  <button className="flex items-center space-x-2 text-[#97453e] font-bold text-xs hover:translate-x-1 transition-transform">
-                    <span className="material-symbols-outlined text-lg">
-                      edit_square
-                    </span>
-                    <span>Edit Details</span>
-                  </button>
-                  <button className="flex items-center space-x-2 text-[#ba1a1a] font-bold text-xs hover:opacity-80 transition-opacity ml-auto">
-                    <span className="material-symbols-outlined text-lg">
-                      delete_sweep
-                    </span>
-                    <span>Remove</span>
-                  </button>
-                </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: "64rem", margin: "0 auto", width: "100%" }}>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: S.onSurfaceVariant }}>
+                <p>Loading bank accounts...</p>
               </div>
+            ) : bankAccounts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem" }}>
+                <p style={{ color: S.onSurfaceVariant, marginBottom: "1.5rem" }}>No bank accounts connected yet</p>
+              </div>
+            ) : (
+              <>
+                {/* Bank Account Cards */}
+                {bankAccounts.map((account) => (
+                  <div 
+                    key={account.id}
+                    style={{ 
+                      background: S.surfaceContainerLowest, 
+                      borderRadius: "0.75rem", 
+                      padding: "2rem", 
+                      position: "relative", 
+                      overflow: "hidden", 
+                      boxShadow: "0px 12px 32px rgba(151,69,62,0.06)" 
+                    }}
+                  >
+                    <div style={{ position: "absolute", right: "-1rem", top: "-1rem", width: "6rem", height: "6rem", background: `${S.primary}05`, borderRadius: "999px" }} />
+                    <div style={{ position: "absolute", top: "1.5rem", right: "2rem" }}>
+                      {account.is_verified && (
+                        <span style={{
+                          background: "#f4dddc",
+                          color: "#79342e",
+                          padding: "0.375rem 1rem",
+                          borderRadius: "999px",
+                          fontSize: "0.625rem",
+                          fontWeight: 800,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.375rem",
+                        }}>
+                          <CheckCircle size={14} fill="#79342e" />
+                          Verified
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "1.5rem", position: "relative", zIndex: 10 }}>
+                      <div style={{
+                        width: "4rem",
+                        height: "4rem",
+                        borderRadius: "0.75rem",
+                        background: "#fae3e1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: S.primary,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                      }}>
+                        <Landmark size={32} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", flex: 1 }}>
+                        <div>
+                          <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: S.onSurface, letterSpacing: "-0.01em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                            {account.bank_name}
+                          </h3>
+                          <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", fontWeight: 500 }}>
+                            {account.is_primary ? "Primary Disbursement Account" : "Disbursement Account"}
+                          </p>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2rem" }}>
+                          <div>
+                            <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
+                              Account Holder
+                            </p>
+                            <p style={{ fontWeight: 700, color: S.onSurface }}>{account.account_holder}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
+                              Account Number
+                            </p>
+                            <p style={{ fontWeight: 700, color: S.onSurface }}>{maskAccountNumber(account.account_number)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: "2rem", display: "flex", alignItems: "center", gap: "1.5rem", borderTop: `1px solid ${S.outlineVariant}1a`, paddingTop: "1.5rem" }}>
+                      <button 
+                        type="button"
+                        style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "0.5rem", 
+                          color: S.primary, 
+                          fontWeight: 700, 
+                          fontSize: "0.8125rem",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontFamily: "Plus Jakarta Sans, sans-serif",
+                          transition: "transform 0.15s"
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.transform = "translateX(4px)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.transform = "translateX(0)")}
+                      >
+                        <Edit size={18} />
+                        <span>Edit Details</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => handleDeleteAccount(account.id)}
+                        style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "0.5rem", 
+                          color: S.error, 
+                          fontWeight: 700, 
+                          fontSize: "0.8125rem",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          marginLeft: "auto",
+                          fontFamily: "Plus Jakarta Sans, sans-serif",
+                          transition: "opacity 0.15s"
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                      >
+                        <Trash2 size={18} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
 
-              {/* Add New Bank CTA */}
-              <a href="/connect-bank" className="w-full border-2 border-dashed border-[#dac1be]/30 rounded-xl p-10 flex flex-col items-center justify-center space-y-4 hover:bg-[#fff0ef] transition-all group">
-                <div className="w-14 h-14 rounded-full bg-[#f28d83]/15 text-[#97453e] flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                  <span className="material-symbols-outlined text-3xl">
-                    add
-                  </span>
-                </div>
-                <div className="text-center">
-                  <p className="font-extrabold text-[#241918] text-lg">
-                    Add New Bank Account
-                  </p>
-                  <p className="text-sm text-[#554240] font-medium">
-                    Connect another secure source for your fund transfers
-                  </p>
-                </div>
-              </a>
-            </div>
+            {/* Add New Bank CTA */}
+            <a 
+              href="/connect-bank" 
+              style={{
+                width: "100%",
+                border: `2px dashed ${S.outlineVariant}4d`,
+                borderRadius: "0.75rem",
+                padding: "2.5rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "1rem",
+                textDecoration: "none",
+                transition: "background 0.15s",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#fff0ef")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <div style={{
+                width: "3.5rem",
+                height: "3.5rem",
+                borderRadius: "999px",
+                background: `${S.primary}15`,
+                color: S.primary,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                transition: "transform 0.15s",
+              }}>
+                <Plus size={28} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontWeight: 800, color: S.onSurface, fontSize: "1.125rem", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                  Add New Bank Account
+                </p>
+                <p style={{ fontSize: "0.875rem", color: S.onSurfaceVariant, fontWeight: 500 }}>
+                  Connect another secure source for your fund transfers
+                </p>
+              </div>
+            </a>
           </div>
 
           {/* Banking Activity */}
-          <section className="space-y-6">
-            <div className="flex items-end justify-between px-2">
+          <section style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "0 0.5rem" }}>
               <div>
-                <h3 className="text-xl font-extrabold tracking-tight">
+                <h3 style={{ fontSize: "1.25rem", fontWeight: 800, letterSpacing: "-0.01em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
                   Banking Activity
                 </h3>
-                <p className="text-sm text-[#554240] font-medium">
+                <p style={{ fontSize: "0.875rem", color: S.onSurfaceVariant, fontWeight: 500 }}>
                   History of account links and verifications
                 </p>
               </div>
-              <button className="text-[#97453e] text-xs font-extrabold hover:underline flex items-center gap-1">
+              <button 
+                type="button"
+                style={{ 
+                  color: S.primary, 
+                  fontSize: "0.8125rem", 
+                  fontWeight: 800, 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "0.25rem",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                  transition: "opacity 0.15s"
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
                 Download Report
-                <span className="material-symbols-outlined text-sm">
-                  download
-                </span>
+                {" "}
+                <span style={{ fontSize: "0.875rem" }}>↓</span>
               </button>
             </div>
-            <div className="bg-white rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.06)] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
+            <div style={{ background: S.surfaceContainerLowest, borderRadius: "0.75rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.06)", overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead>
-                    <tr className="bg-[#fff0ef]/50 text-[#554240] text-[10px] font-bold uppercase tracking-widest">
+                    <tr style={{ background: S.surfaceContainerLow }}>
                       {["Event", "Date", "Status", "Details"].map((h) => (
                         <th
                           key={h}
-                          className={`px-8 py-5 ${
-                            h === "Details" ? "text-right" : ""
-                          }`}
+                          style={{
+                            padding: "1.25rem 2rem",
+                            fontSize: "0.625rem",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            color: S.onSurfaceVariant,
+                            textAlign: h === "Details" ? "right" : "left",
+                          }}
                         >
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#dac1be]/10">
+                  <tbody>
                     {BANKING_EVENTS.map((event) => (
                       <EventRow key={event.id} event={event} />
                     ))}
@@ -427,38 +770,7 @@ export default function BankingDetailsPage() {
           </section>
         </main>
       </div>
-
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#dac1be]/15 flex justify-around py-4 z-50 shadow-lg">
-        {[
-          { icon: "dashboard", label: "Home", active: false, href: "/dashboard" },
-          { icon: "payments", label: "Funds", active: false, href: "/fund-management" },
-          { icon: "account_balance", label: "Bank", active: true, href: "/banking-details" },
-          { icon: "person", label: "Profile", active: false, href: "/dashboard" },
-        ].map((item) => (
-          <a
-            key={item.label}
-            href={item.href}
-            className={`flex flex-col items-center ${
-              item.active ? "text-[#97453e]" : "text-stone-500"
-            }`}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={
-                item.active
-                  ? { fontVariationSettings: "'FILL' 1" }
-                  : undefined
-              }
-            >
-              {item.icon}
-            </span>
-            <span className="text-[10px] font-bold uppercase mt-1">
-              {item.label}
-            </span>
-          </a>
-        ))}
-      </nav>
     </div>
   );
 }
+

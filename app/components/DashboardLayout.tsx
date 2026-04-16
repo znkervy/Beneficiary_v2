@@ -1,37 +1,18 @@
 "use client";
 
-import React, { useState, ReactNode } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck, HelpCircle
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { usePathname } from "next/navigation";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DashboardLayoutProps {
-  children: ReactNode;
-  activePage: "overview" | "funds" | "banking" | "identity" | "profile" | "security";
-  displayName?: string;
-  onLogout?: () => void;
+  children: React.ReactNode;
 }
-
-interface NavItemConfig {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  key: string;
-}
-
-const NAV_ITEMS: NavItemConfig[] = [
-  { icon: <LayoutDashboard size={20} />, label: "Overview", href: "/dashboard", key: "overview" },
-  { icon: <CreditCard size={20} />, label: "Funds", href: "/fund-management", key: "funds" },
-  { icon: <Landmark size={20} />, label: "Banking", href: "/banking-details", key: "banking" },
-  { icon: <IdCard size={20} />, label: "Identity", href: "/dashboard", key: "identity" },
-  { icon: <User size={20} />, label: "Profile", href: "/dashboard", key: "profile" },
-  { icon: <ShieldCheck size={20} />, label: "Security", href: "/dashboard", key: "security" },
-];
-
-const SIDEBAR_W_EXPANDED = 220;
-const SIDEBAR_W_COLLAPSED = 80;
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -41,39 +22,77 @@ interface NavItemProps {
   href: string;
 }
 
-const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => (
-  <a
-    href={href}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "0.75rem",
-      padding: collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem",
-      justifyContent: collapsed ? "center" : "flex-start",
-      borderRadius: active ? "999px 0 0 999px" : "999px",
-      marginLeft: active ? "1rem" : (collapsed ? "0.75rem" : 0),
-      marginRight: active ? 0 : (collapsed ? "0.75rem" : 0),
-      background: active ? S.surfaceContainerLowest : "transparent",
-      color: active ? S.primary : "#78716c",
-      fontWeight: active ? 700 : 500,
-      fontSize: "0.875rem",
-      textDecoration: "none",
-      boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-      transition: "color 0.15s, background 0.15s, transform 0.15s",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-    }}
-    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
-    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
-  >
-    {icon}
-    {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
-  </a>
-));
+// ─── Nav Item Component ───────────────────────────────────────────────────────
+
+const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => {
+  const paddingValue = collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem";
+  
+  let marginLeftValue: string | number = 0;
+  if (active) {
+    marginLeftValue = "1rem";
+  } else if (collapsed) {
+    marginLeftValue = "0.75rem";
+  }
+  
+  let marginRightValue: string | number = 0;
+  if (!active && collapsed) {
+    marginRightValue = "0.75rem";
+  }
+  
+  return (
+    <a
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: paddingValue,
+        justifyContent: collapsed ? "center" : "flex-start",
+        borderRadius: active ? "999px 0 0 999px" : "999px",
+        marginLeft: marginLeftValue,
+        marginRight: marginRightValue,
+        background: active ? S.surfaceContainerLowest : "transparent",
+        color: active ? S.primary : "#78716c",
+        fontWeight: active ? 700 : 500,
+        fontSize: "0.875rem",
+        textDecoration: "none",
+        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+        transition: "color 0.15s, background 0.15s, transform 0.15s",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+      }}
+      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
+      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
+    >
+      {icon}
+      {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
+    </a>
+  );
+});
 NavItem.displayName = "NavItem";
 
-export function DashboardLayout({ children, activePage, displayName, onLogout }: DashboardLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false);
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const SIDEBAR_W_EXPANDED = 220;
+const SIDEBAR_W_COLLAPSED = 80;
+
+const NAV_ITEMS = [
+  { icon: <LayoutDashboard size={20} />, label: "Overview", href: "/dashboard" },
+  { icon: <CreditCard size={20} />, label: "Funds", href: "/fund-management" },
+  { icon: <Landmark size={20} />, label: "Banking", href: "/banking-details" },
+  { icon: <IdCard size={20} />, label: "Identity", href: "/identity-verification" },
+  { icon: <User size={20} />, label: "Profile", href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />, label: "Security", href: "/security-settings" },
+];
+
+// ─── Main Layout Component ────────────────────────────────────────────────────
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
+  const pathname = usePathname();
+  
+  const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
   return (
@@ -103,7 +122,7 @@ export function DashboardLayout({ children, activePage, displayName, onLogout }:
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={toggleSidebar}
             style={{ padding: "0.5rem", background: "none", border: "none", cursor: "pointer", color: "#78716c", borderRadius: "999px", display: "flex", transition: "background 0.15s" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = S.surfaceContainerHigh)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -125,27 +144,92 @@ export function DashboardLayout({ children, activePage, displayName, onLogout }:
             <Bell size={22} />
             <span style={{ position: "absolute", top: "0.5rem", right: "0.5rem", width: "0.5rem", height: "0.5rem", background: S.error, borderRadius: "999px" }} />
           </button>
-          
-          {displayName && onLogout && (
+
+          <div style={{ position: "relative" }}>
             <button
-              onClick={onLogout}
+              onClick={() => setProfileOpen(!profileOpen)}
               style={{
-                padding: "0.5rem 1rem",
-                background: S.primary,
-                color: S.onPrimary,
-                border: "none",
+                width: "2.5rem",
+                height: "2.5rem",
                 borderRadius: "999px",
+                background: S.primaryContainer,
+                border: `2px solid ${S.primary}`,
                 cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                transition: "opacity 0.15s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "transform 0.15s",
+                overflow: "hidden",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
             >
-              {displayName}
+              <User size={20} style={{ color: S.primary }} />
             </button>
-          )}
+
+            {profileOpen && (
+              <>
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 40,
+                  }}
+                  onClick={() => setProfileOpen(false)}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "3.5rem",
+                    right: 0,
+                    width: "16rem",
+                    background: S.surfaceContainerLowest,
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                    zIndex: 50,
+                    border: `1px solid ${S.outlineVariant}33`,
+                  }}
+                >
+                  <div style={{ padding: "1.5rem", borderBottom: `1px solid ${S.outlineVariant}1a` }}>
+                    <p style={{ fontWeight: 700, color: S.onSurface, fontSize: "0.9375rem", margin: "0 0 0.25rem" }}>
+                      Beneficiary
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: S.onSurfaceVariant, margin: 0 }}>
+                      Beneficiary Account
+                    </p>
+                  </div>
+                  <div style={{ padding: "0.5rem" }}>
+                    <a
+                      href="/login"
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem 1rem",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        color: S.error,
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        borderRadius: "0.5rem",
+                        transition: "background 0.15s",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                        textDecoration: "none",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = `${S.errorContainer}33`)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span style={{ fontSize: "1.25rem" }}>→</span>
+                      <span>Log Out</span>
+                    </a>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -180,14 +264,14 @@ export function DashboardLayout({ children, activePage, displayName, onLogout }:
             </div>
           )}
 
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.map(({ icon, label, href }) => (
             <NavItem 
-              key={item.key} 
-              icon={item.icon} 
-              label={item.label} 
-              active={item.key === activePage} 
+              key={label} 
+              icon={icon} 
+              label={label} 
+              active={pathname === href} 
               collapsed={collapsed} 
-              href={item.href} 
+              href={href} 
             />
           ))}
 
@@ -225,6 +309,7 @@ export function DashboardLayout({ children, activePage, displayName, onLogout }:
           style={{
             flex: 1,
             marginLeft: `${sidebarW}px`,
+            minHeight: "calc(100vh - 5rem)",
           }}
         >
           {children}

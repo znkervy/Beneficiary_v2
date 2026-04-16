@@ -207,6 +207,7 @@ const SIDEBAR_W_COLLAPSED = 80;
 
 const FundManagement: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
@@ -259,6 +260,92 @@ const FundManagement: React.FC = () => {
             <Bell size={22} />
             <span style={{ position: "absolute", top: "0.5rem", right: "0.5rem", width: "0.5rem", height: "0.5rem", background: S.error, borderRadius: "999px" }} />
           </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              style={{
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "999px",
+                background: S.primaryContainer,
+                border: `2px solid ${S.primary}`,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "transform 0.15s",
+                overflow: "hidden",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <User size={20} style={{ color: S.primary }} />
+            </button>
+
+            {profileOpen && (
+              <>
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 40,
+                  }}
+                  onClick={() => setProfileOpen(false)}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "3.5rem",
+                    right: 0,
+                    width: "16rem",
+                    background: S.surfaceContainerLowest,
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                    zIndex: 50,
+                    border: `1px solid ${S.outlineVariant}33`,
+                  }}
+                >
+                  <div style={{ padding: "1.5rem", borderBottom: `1px solid ${S.outlineVariant}1a` }}>
+                    <p style={{ fontWeight: 700, color: S.onSurface, fontSize: "0.9375rem", margin: "0 0 0.25rem" }}>
+                      Beneficiary
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: S.onSurfaceVariant, margin: 0 }}>
+                      Beneficiary Account
+                    </p>
+                  </div>
+                  <div style={{ padding: "0.5rem" }}>
+                    <a
+                      href="/login"
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem 1rem",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        color: S.error,
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        borderRadius: "0.5rem",
+                        transition: "background 0.15s",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                        textDecoration: "none",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = `${S.errorContainer}33`)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span style={{ fontSize: "1.25rem" }}>→</span>
+                      <span>Log Out</span>
+                    </a>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 

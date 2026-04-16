@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
   const { data: beneficiaryRows } = await supabase
     .from("beneficiaries")
-    .select("total_amount_received")
+    .select("total_amount_received, verification_status")
     .eq("auth_user_id", user.id);
 
   const totalAmountReceived = (beneficiaryRows ?? []).reduce((total, row) => {
@@ -52,6 +52,9 @@ export default async function DashboardPage() {
     currency: "PHP",
     minimumFractionDigits: 0,
   }).format(totalAmountReceived);
+
+  // Get verification status from first beneficiary record
+  const verificationStatus = beneficiaryRows?.[0]?.verification_status ?? "pending";
 
   async function logout() {
     "use server";
@@ -65,6 +68,7 @@ export default async function DashboardPage() {
     <DashboardClient 
       displayName={displayName}
       totalAmount={formattedTotalAmountReceived}
+      verificationStatus={verificationStatus}
       logoutAction={logout}
     />
   );

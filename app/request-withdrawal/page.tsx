@@ -1,6 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import {
+  Menu, Bell, LayoutDashboard, CreditCard,
+  Landmark, IdCard, User, ShieldCheck, HelpCircle, ChevronDown, Clock, Info
+} from "lucide-react";
+import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,116 +30,102 @@ const BANK_OPTIONS: BankOption[] = [
 
 const GUIDELINES = [
   {
-    icon: "schedule",
+    icon: <Clock size={20} />,
     title: "Processing Time",
     desc: "Requests before 2 PM EST are reviewed same-day. Funds arrive in 1-3 business days.",
   },
   {
-    icon: "info",
+    icon: <Info size={20} />,
     title: "Limit Thresholds",
     desc: "Daily limit of $5,000 for standard accounts. Contact support for higher volume transfers.",
   },
 ];
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── Nav Item Component ───────────────────────────────────────────────────────
 
-interface SidebarProps {
+interface NavItemProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
   collapsed: boolean;
+  href: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
-  const navItems = [
-    { icon: "dashboard", label: "Overview", active: false, href: "/dashboard" },
-    { icon: "payments", label: "Funds", active: false, href: "/fund-management" },
-    { icon: "account_balance", label: "Banking", active: true, href: "/banking-details" },
-    { icon: "badge", label: "Identity", active: false, href: "/dashboard" },
-    { icon: "person", label: "Profile", active: false, href: "/dashboard" },
-    { icon: "security", label: "Security", active: false, href: "/dashboard" },
-  ];
-
+const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => {
+  const paddingValue = collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem";
+  
+  let marginLeftValue: string | number = 0;
+  if (active) {
+    marginLeftValue = "1rem";
+  } else if (collapsed) {
+    marginLeftValue = "0.75rem";
+  }
+  
+  let marginRightValue: string | number = 0;
+  if (!active && collapsed) {
+    marginRightValue = "0.75rem";
+  }
+  
   return (
-    <aside
-      className={`hidden md:flex flex-col gap-2 fixed left-0 top-0 pt-24 h-screen bg-[#fae3e1] z-40 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-        collapsed ? "w-20" : "w-[220px]"
-      }`}
+    <a
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: paddingValue,
+        justifyContent: collapsed ? "center" : "flex-start",
+        borderRadius: active ? "999px 0 0 999px" : "999px",
+        marginLeft: marginLeftValue,
+        marginRight: marginRightValue,
+        background: active ? S.surfaceContainerLowest : "transparent",
+        color: active ? S.primary : "#78716c",
+        fontWeight: active ? 700 : 500,
+        fontSize: "0.875rem",
+        textDecoration: "none",
+        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+        transition: "color 0.15s, background 0.15s, transform 0.15s",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+      }}
+      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
+      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
     >
-      {!collapsed && (
-        <div className="px-6 mb-8">
-          <p className="text-[#554240] uppercase tracking-wider text-[10px] font-bold mb-2">
-            Beneficiary Portal
-          </p>
-          <div className="p-4 bg-white rounded-lg">
-            <p className="text-xs font-bold text-[#97453e]">Verified Member</p>
-            <p className="text-[10px] text-[#554240]">Active since 2023</p>
-          </div>
-        </div>
-      )}
-
-      <nav className="flex flex-col gap-1">
-        {navItems.map((item) =>
-          item.active ? (
-            <a
-              key={item.label}
-              href={item.href}
-              style={{ textDecoration: "none" }}
-              className={`bg-white text-[#97453e] rounded-l-full shadow-sm font-bold flex items-center gap-3 py-3 transition-all ${
-                collapsed
-                  ? "justify-center mx-3 px-0 rounded-full"
-                  : "ml-4 pl-8"
-              }`}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                {item.icon}
-              </span>
-              {!collapsed && <span>{item.label}</span>}
-            </a>
-          ) : (
-            <a
-              key={item.label}
-              href={item.href}
-              style={{ textDecoration: "none" }}
-              className={`text-stone-600 py-3 hover:text-[#97453e] hover:translate-x-1 transition-all flex items-center gap-3 font-medium text-sm ${
-                collapsed ? "justify-center mx-3 px-0 rounded-full" : "pl-8"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xl">{item.icon}</span>
-              {!collapsed && <span>{item.label}</span>}
-            </a>
-          )
-        )}
-      </nav>
-
-      <div className="mt-auto px-6 pb-8">
-        <button
-          className={`bg-[#97453e] text-white rounded-full font-bold text-xs hover:opacity-90 transition-all flex items-center justify-center gap-2 ${
-            collapsed ? "w-12 h-12 mx-auto p-0" : "w-full py-3"
-          }`}
-        >
-          <span className="material-symbols-outlined text-lg">help</span>
-          {!collapsed && <span>Request Support</span>}
-        </button>
-      </div>
-    </aside>
+      {icon}
+      {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
+    </a>
   );
-};
+});
+NavItem.displayName = "NavItem";
+
+const NAV_ITEMS = [
+  { icon: <LayoutDashboard size={20} />, label: "Overview", active: false, href: "/dashboard" },
+  { icon: <CreditCard size={20} />, label: "Funds", active: false, href: "/fund-management" },
+  { icon: <Landmark size={20} />, label: "Banking", active: true, href: "/banking-details" },
+  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/identity-verification" },
+  { icon: <User size={20} />, label: "Profile", active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/security-settings" },
+];
+
+const SIDEBAR_W_EXPANDED = 220;
+const SIDEBAR_W_COLLAPSED = 80;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const RequestWithdrawal: React.FC = () => {
+export default function RequestWithdrawal() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [form, setForm] = useState<WithdrawalFormState>({
     amount: "",
     bank: "chase",
     notes: "",
   });
 
+  const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
+  const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
+
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { id, value } = e.target;
     setForm((prev) => ({ ...prev, [id]: value }));
@@ -142,236 +133,507 @@ const RequestWithdrawal: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // handle submit
+    console.log("Withdrawal request:", form);
   };
 
   return (
-    <div className="bg-[#fff8f7] text-[#241918] min-h-screen font-[Plus_Jakarta_Sans] overflow-x-hidden">
-      {/* TopNav */}
-      <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-[0px_12px_32px_rgba(151,69,62,0.06)] flex justify-between items-center w-full px-8 h-20">
-        <div className="flex items-center gap-3">
+    <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+      <BeneficiaryStyle />
+      <style>{`
+        .nav-transition { transition: width 0.3s cubic-bezier(0.4,0,0.2,1); }
+        .main-transition { transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1); }
+      `}</style>
+
+      {/* ── Top Nav ─────────────────────────────────────────────────────────── */}
+      <nav
+        style={{
+          background: "rgba(255,255,255,0.8)",
+          backdropFilter: "blur(12px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          boxShadow: "0px 12px 32px rgba(151,69,62,0.06)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+          padding: "0 2rem",
+          height: "5rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="p-2 -ml-2 text-stone-600 hover:bg-[#fae3e1] rounded-full transition-colors"
+            onClick={toggleSidebar}
+            style={{ padding: "0.5rem", background: "none", border: "none", cursor: "pointer", color: "#78716c", borderRadius: "999px", display: "flex", transition: "background 0.15s" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = S.surfaceContainerHigh)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <span className="material-symbols-outlined">
-              {collapsed ? "menu_open" : "menu"}
-            </span>
+            <Menu size={22} />
           </button>
-          <span className="text-2xl font-bold tracking-tight text-[#97453e] hidden sm:inline">
-            HOPECARD
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <img src={LOGO_SRC} alt="HOPECARD Logo" style={{ height: "2rem", width: "auto", objectFit: "contain" }} />
+            <span style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", color: S.primary }}>HOPECARD</span>
+          </div>
         </div>
-        <button className="p-2 text-stone-500 hover:bg-[#fae3e1] transition-colors rounded-full relative">
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="absolute top-2 right-2 w-2 h-2 bg-[#ba1a1a] rounded-full" />
-        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <button
+            style={{ padding: "0.5rem", background: "none", border: "none", cursor: "pointer", color: "#78716c", borderRadius: "999px", display: "flex", position: "relative", transition: "background 0.15s" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = S.surfaceContainerHigh)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <Bell size={22} />
+            <span style={{ position: "absolute", top: "0.5rem", right: "0.5rem", width: "0.5rem", height: "0.5rem", background: S.error, borderRadius: "999px" }} />
+          </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              style={{
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "999px",
+                background: S.primaryContainer,
+                border: `2px solid ${S.primary}`,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "transform 0.15s",
+                overflow: "hidden",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <User size={20} style={{ color: S.primary }} />
+            </button>
+
+            {profileOpen && (
+              <>
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 40,
+                  }}
+                  onClick={() => setProfileOpen(false)}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "3.5rem",
+                    right: 0,
+                    width: "16rem",
+                    background: S.surfaceContainerLowest,
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                    zIndex: 50,
+                    border: `1px solid ${S.outlineVariant}33`,
+                  }}
+                >
+                  <div style={{ padding: "1.5rem", borderBottom: `1px solid ${S.outlineVariant}1a` }}>
+                    <p style={{ fontWeight: 700, color: S.onSurface, fontSize: "0.9375rem", margin: "0 0 0.25rem" }}>
+                      Beneficiary
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: S.onSurfaceVariant, margin: 0 }}>
+                      Beneficiary Account
+                    </p>
+                  </div>
+                  <div style={{ padding: "0.5rem" }}>
+                    <a
+                      href="/login"
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem 1rem",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        color: S.error,
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        borderRadius: "0.5rem",
+                        transition: "background 0.15s",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                        textDecoration: "none",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = `${S.errorContainer}33`)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span style={{ fontSize: "1.25rem" }}>→</span>
+                      <span>Log Out</span>
+                    </a>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </nav>
 
-      <div className="flex">
-        <Sidebar collapsed={collapsed} />
-
-        <main
-          className={`flex-1 pt-12 px-8 pb-12 min-h-screen transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-            collapsed ? "ml-20" : "ml-[220px]"
-          }`}
+      <div style={{ display: "flex" }}>
+        {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+        <aside
+          className="nav-transition"
+          style={{
+            width: `${sidebarW}px`,
+            background: S.surfaceContainerHigh,
+            height: "100vh",
+            position: "fixed",
+            left: 0,
+            top: 0,
+            paddingTop: "6rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.5rem",
+            zIndex: 40,
+            overflow: "hidden",
+          }}
         >
-          <div className="max-w-4xl mx-auto px-4">
-            {/* Header */}
-            <div className="mb-12 text-center md:text-left">
-              <div className="max-w-xl mx-auto md:mx-0">
-                <span className="text-[#97453e] font-bold tracking-[0.1em] uppercase block mb-2 text-sm">
-                  Banking &amp; Withdrawals
-                </span>
-                <h1 className="text-4xl md:text-5xl font-bold text-[#241918] tracking-tight leading-none mb-4">
-                  Request Withdrawal
-                </h1>
-                <p className="text-lg text-[#554240] leading-relaxed">
-                  Securely transfer your accumulated benefits to your verified
-                  bank account. Most requests are processed within 24-48
-                  business hours.
-                </p>
+          {!collapsed && (
+            <div style={{ padding: "0 1.5rem", marginBottom: "2rem" }}>
+              <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, marginBottom: "0.5rem" }}>
+                Member Portal
+              </p>
+              <div style={{ padding: "1rem", background: S.surfaceContainerLowest, borderRadius: "0.5rem" }}>
+                <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>Verified Member</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
               </div>
             </div>
+          )}
 
-            <div className="space-y-8 flex flex-col items-center">
-              {/* Form Card */}
-              <div className="w-full bg-white p-10 rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.06)]">
-                <form className="space-y-8" onSubmit={handleSubmit}>
-                  {/* Amount */}
-                  <div>
-                    <label
-                      htmlFor="amount"
-                      className="block text-xs font-bold text-[#554240] uppercase tracking-widest mb-3"
-                    >
-                      Amount to Withdraw
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-[#877270]">
-                        $
-                      </span>
-                      <input
-                        id="amount"
-                        type="number"
-                        value={form.amount}
-                        onChange={handleChange}
-                        placeholder="0.00"
-                        className="w-full bg-[#fff0ef] rounded-lg py-5 pl-12 pr-6 text-2xl font-bold text-[#241918] border border-[#dac1be]/15 focus:outline-none focus:border-[#97453e] focus:ring-4 focus:ring-[#ffbdbd]/20 transition-all placeholder:text-[#877270]/40"
-                      />
-                    </div>
-                    <div className="mt-3 flex justify-between text-xs">
-                      <span className="text-[#554240]">Min: $100.00</span>
-                      <button
-                        type="button"
-                        className="text-[#97453e] font-bold hover:underline"
-                      >
-                        Withdraw Max Funds
-                      </button>
-                    </div>
-                  </div>
+          {NAV_ITEMS.map(({ icon, label, active, href }) => (
+            <NavItem key={label} icon={icon} label={label} active={active} collapsed={collapsed} href={href} />
+          ))}
 
-                  {/* Bank Select */}
-                  <div>
-                    <label
-                      htmlFor="bank"
-                      className="block text-xs font-bold text-[#554240] uppercase tracking-widest mb-3"
-                    >
-                      Select Bank Account
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="bank"
-                        value={form.bank}
-                        onChange={handleChange}
-                        className="w-full bg-[#fff0ef] rounded-lg py-4 px-6 text-[#241918] font-medium appearance-none border border-[#dac1be]/15 focus:outline-none focus:border-[#97453e] focus:ring-4 focus:ring-[#ffbdbd]/20 transition-all"
-                      >
-                        {BANK_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#554240] pointer-events-none">
-                        expand_more
-                      </span>
-                    </div>
-                  </div>
+          <div style={{ marginTop: "auto", padding: collapsed ? "0 1rem 2rem" : "0 1.5rem 2rem" }}>
+            <button
+              style={{
+                width: "100%",
+                padding: collapsed ? "0.75rem" : "0.75rem 1rem",
+                background: S.primary,
+                color: S.onPrimary,
+                borderRadius: "999px",
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: collapsed ? 0 : "0.5rem",
+                transition: "opacity 0.15s",
+                fontFamily: "Plus Jakarta Sans, sans-serif",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              <HelpCircle size={18} />
+              {!collapsed && "Request Support"}
+            </button>
+          </div>
+        </aside>
 
-                  {/* Notes */}
-                  <div>
-                    <label
-                      htmlFor="notes"
-                      className="block text-xs font-bold text-[#554240] uppercase tracking-widest mb-3"
-                    >
-                      Notes (Optional)
-                    </label>
-                    <textarea
-                      id="notes"
-                      rows={4}
-                      value={form.notes}
+        {/* ── Main Content ─────────────────────────────────────────────────── */}
+        <main
+          className="main-transition"
+          style={{
+            flex: 1,
+            marginLeft: `${sidebarW}px`,
+            padding: "3rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2rem",
+            minHeight: "calc(100vh - 5rem)",
+          }}
+        >
+          <div style={{ maxWidth: "64rem", margin: "0 auto", width: "100%" }}>
+            {/* Header */}
+            <header style={{ marginBottom: "3rem" }}>
+              <span style={{ fontSize: "0.875rem", fontWeight: 700, color: S.primary, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>
+                Banking &amp; Withdrawals
+              </span>
+              <h1 style={{ fontSize: "2.25rem", fontWeight: 800, color: S.onSurface, letterSpacing: "-0.02em", marginBottom: "0.75rem", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                Request Withdrawal
+              </h1>
+              <p style={{ color: S.onSurfaceVariant, fontSize: "1.125rem", maxWidth: "40rem", lineHeight: 1.5 }}>
+                Securely transfer your accumulated benefits to your verified bank account. Most requests are processed within 24-48 business hours.
+              </p>
+            </header>
+
+            {/* Form Card */}
+            <div style={{ background: S.surfaceContainerLowest, borderRadius: "0.75rem", padding: "2.5rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.06)", marginBottom: "2rem" }}>
+              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                {/* Amount */}
+                <div>
+                  <label
+                    htmlFor="amount"
+                    style={{
+                      fontSize: "0.625rem",
+                      fontWeight: 700,
+                      color: S.onSurfaceVariant,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.12em",
+                      display: "block",
+                      marginBottom: "0.75rem",
+                    }}
+                  >
+                    Amount to Withdraw
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", fontSize: "1.5rem", fontWeight: 700, color: "#877270" }}>
+                      ₱
+                    </span>
+                    <input
+                      id="amount"
+                      type="number"
+                      value={form.amount}
                       onChange={handleChange}
-                      placeholder="Briefly describe the purpose of this withdrawal..."
-                      className="w-full bg-[#fff0ef] rounded-lg p-6 text-[#241918] font-medium border border-[#dac1be]/15 focus:outline-none focus:border-[#97453e] focus:ring-4 focus:ring-[#ffbdbd]/20 transition-all placeholder:text-[#877270]/40"
+                      placeholder="0.00"
+                      style={{
+                        width: "100%",
+                        background: S.surfaceContainerLow,
+                        borderRadius: "0.75rem",
+                        padding: "1.25rem 1.5rem 1.25rem 3rem",
+                        fontSize: "1.5rem",
+                        fontWeight: 700,
+                        color: S.onSurface,
+                        border: `1px solid ${S.outlineVariant}26`,
+                        outline: "none",
+                        transition: "all 0.15s",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = S.primary;
+                        e.currentTarget.style.boxShadow = `0 0 0 4px ${S.primaryContainer}33`;
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = `${S.outlineVariant}26`;
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
                     />
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-[#f28d83] text-[#6e2621] font-bold py-5 rounded-full hover:brightness-95 active:scale-95 transition-all text-lg shadow-sm"
-                    >
-                      Submit Request
-                    </button>
+                  <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "space-between", fontSize: "0.75rem" }}>
+                    <span style={{ color: S.onSurfaceVariant }}>Min: ₱100.00</span>
                     <button
                       type="button"
-                      className="sm:w-1/3 bg-transparent text-[#97453e] font-bold py-5 rounded-full hover:bg-[#f4dddc]/30 active:scale-95 transition-all text-lg border border-[#97453e]/20"
+                      style={{
+                        color: S.primary,
+                        fontWeight: 700,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                      }}
                     >
-                      Cancel
+                      Withdraw Max Funds
                     </button>
                   </div>
-                </form>
-              </div>
+                </div>
 
-              {/* Guidelines Card */}
-              <div className="w-full bg-[#fae3e1]/50 p-8 rounded-xl border border-[#dac1be]/10">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="material-symbols-outlined text-[#97453e]">
-                    verified_user
-                  </span>
-                  <h3 className="text-xl font-semibold text-[#241918]">
-                    Withdrawal Guidelines
-                  </h3>
+                {/* Bank Select */}
+                <div>
+                  <label
+                    htmlFor="bank"
+                    style={{
+                      fontSize: "0.625rem",
+                      fontWeight: 700,
+                      color: S.onSurfaceVariant,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.12em",
+                      display: "block",
+                      marginBottom: "0.75rem",
+                    }}
+                  >
+                    Select Bank Account
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <select
+                      id="bank"
+                      value={form.bank}
+                      onChange={handleChange}
+                      style={{
+                        width: "100%",
+                        background: S.surfaceContainerLow,
+                        borderRadius: "0.75rem",
+                        padding: "1rem 3rem 1rem 1.5rem",
+                        color: S.onSurface,
+                        fontWeight: 600,
+                        border: `1px solid ${S.outlineVariant}26`,
+                        outline: "none",
+                        appearance: "none",
+                        transition: "all 0.15s",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                        cursor: "pointer",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = S.primary;
+                        e.currentTarget.style.boxShadow = `0 0 0 4px ${S.primaryContainer}33`;
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = `${S.outlineVariant}26`;
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {BANK_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        right: "1rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        pointerEvents: "none",
+                        color: S.onSurfaceVariant,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {GUIDELINES.map((g) => (
-                    <div key={g.title} className="flex gap-4">
-                      <div className="w-10 h-10 shrink-0 bg-white rounded-full flex items-center justify-center text-[#97453e]">
-                        <span className="material-symbols-outlined">
-                          {g.icon}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm text-[#241918] mb-1">
-                          {g.title}
-                        </p>
-                        <p className="text-sm text-[#554240] leading-relaxed">
-                          {g.desc}
-                        </p>
-                      </div>
+
+                {/* Notes */}
+                <div>
+                  <label
+                    htmlFor="notes"
+                    style={{
+                      fontSize: "0.625rem",
+                      fontWeight: 700,
+                      color: S.onSurfaceVariant,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.12em",
+                      display: "block",
+                      marginBottom: "0.75rem",
+                    }}
+                  >
+                    Notes (Optional)
+                  </label>
+                  <textarea
+                    id="notes"
+                    rows={4}
+                    value={form.notes}
+                    onChange={handleChange}
+                    placeholder="Briefly describe the purpose of this withdrawal..."
+                    style={{
+                      width: "100%",
+                      background: S.surfaceContainerLow,
+                      borderRadius: "0.75rem",
+                      padding: "1.5rem",
+                      color: S.onSurface,
+                      fontWeight: 500,
+                      border: `1px solid ${S.outlineVariant}26`,
+                      outline: "none",
+                      transition: "all 0.15s",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                      resize: "vertical",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = S.primary;
+                      e.currentTarget.style.boxShadow = `0 0 0 4px ${S.primaryContainer}33`;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = `${S.outlineVariant}26`;
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: "1rem", paddingTop: "1rem" }}>
+                  <button
+                    type="submit"
+                    style={{
+                      flex: 1,
+                      background: "#F28D83",
+                      color: "#6e2621",
+                      fontWeight: 700,
+                      padding: "1.25rem",
+                      borderRadius: "999px",
+                      fontSize: "1.125rem",
+                      border: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 16px rgba(242,141,131,0.3)",
+                      transition: "transform 0.15s",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.01)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                  >
+                    Submit Request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.history.back()}
+                    style={{
+                      width: "33%",
+                      background: "transparent",
+                      color: S.primary,
+                      fontWeight: 700,
+                      padding: "1.25rem",
+                      borderRadius: "999px",
+                      fontSize: "1.125rem",
+                      border: `2px solid ${S.primary}33`,
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = `${S.primaryContainer}33`)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Guidelines Card */}
+            <div style={{ background: `${S.surfaceContainerLow}80`, borderRadius: "0.75rem", padding: "2rem", border: `1px solid ${S.outlineVariant}1a` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                <ShieldCheck size={20} style={{ color: S.primary }} />
+                <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: S.onSurface, margin: 0 }}>
+                  Withdrawal Guidelines
+                </h3>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(20rem, 1fr))", gap: "1.5rem" }}>
+                {GUIDELINES.map((g) => (
+                  <div key={g.title} style={{ display: "flex", gap: "1rem" }}>
+                    <div
+                      style={{
+                        width: "2.5rem",
+                        height: "2.5rem",
+                        flexShrink: 0,
+                        background: S.surfaceContainerLowest,
+                        borderRadius: "999px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: S.primary,
+                      }}
+                    >
+                      {g.icon}
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: "0.875rem", color: S.onSurface, margin: "0 0 0.25rem" }}>
+                        {g.title}
+                      </p>
+                      <p style={{ fontSize: "0.875rem", color: S.onSurfaceVariant, lineHeight: 1.5, margin: 0 }}>
+                        {g.desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </main>
       </div>
-
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#fff8f7] px-6 py-4 flex justify-around items-center z-50 shadow-[0px_-8px_24px_rgba(151,69,62,0.08)]">
-        {[
-          { icon: "home", label: "Home", active: false, href: "/dashboard" },
-          { icon: "account_balance", label: "Banking", active: true, href: "/banking-details" },
-          { icon: "add", label: "", fab: true, href: "/connect-bank" },
-          { icon: "payments", label: "Funds", active: false, href: "/fund-management" },
-          { icon: "person", label: "Profile", active: false, href: "/dashboard" },
-        ].map((item, idx) =>
-          item.fab ? (
-            <a
-              key={`fab-${idx}`}
-              href={item.href}
-              className="bg-[#f28d83] text-[#6e2621] w-12 h-12 rounded-full flex items-center justify-center -mt-10 shadow-lg active:scale-95 duration-150"
-            >
-              <span className="material-symbols-outlined">add</span>
-            </a>
-          ) : (
-            <a
-              key={item.label}
-              href={item.href}
-              className={`flex flex-col items-center gap-1 ${
-                item.active ? "text-[#97453e]" : "text-[#554240]"
-              }`}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={
-                  item.active
-                    ? { fontVariationSettings: "'FILL' 1" }
-                    : undefined
-                }
-              >
-                {item.icon}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-tighter">
-                {item.label}
-              </span>
-            </a>
-          )
-        )}
-      </nav>
     </div>
   );
-};
-
-export default RequestWithdrawal;
+}
