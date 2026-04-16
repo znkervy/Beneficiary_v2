@@ -96,6 +96,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // When email confirmation is enabled, Supabase returns a fake success for
+    // already-registered emails (to prevent user enumeration). Detect this by
+    // checking for an empty identities array on the returned user.
+    if (authData.user.identities?.length === 0) {
+      return NextResponse.json(
+        { error: 'An account with this email already exists.' },
+        { status: 409 }
+      );
+    }
+
     const userId = authData.user.id;
 
     // Step 2: Upload ID file to beneficiary-ids storage bucket
