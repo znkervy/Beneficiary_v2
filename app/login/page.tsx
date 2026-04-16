@@ -1,7 +1,14 @@
+// app/login/page.tsx
 import { LoginForm } from "@/app/login/login-form";
 import { BeneficiaryStyle, BeneficiaryFooter, AmbientCard, CardLogo } from "@/app/shared/beneficiary-shared";
 
-export default async function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{ confirmed?: string; error?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+
   return (
     <div
       style={{
@@ -30,7 +37,7 @@ export default async function LoginPage() {
             </p>
           </div>
 
-          <LoginForm />
+          <LoginForm confirmed={params.confirmed === 'true'} linkExpired={params.error === 'expired'} />
 
           {/* Bottom link */}
           <div style={{ marginTop: "2.5rem", paddingTop: "2rem", width: "100%", textAlign: "center", borderTop: "1px solid #dac1be1a" }}>

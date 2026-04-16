@@ -1,3 +1,4 @@
+// app/login/login-form.tsx
 "use client";
 
 import { useState, useCallback } from "react";
@@ -8,7 +9,12 @@ import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { S, FieldLabel, TextInput, PrimaryBtn } from "@/app/shared/beneficiary-shared";
 
-export function LoginForm() {
+interface LoginFormProps {
+  confirmed?: boolean;
+  linkExpired?: boolean;
+}
+
+export function LoginForm({ confirmed, linkExpired }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,30 +29,78 @@ export function LoginForm() {
     setError(null);
     setIsSubmitting(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (signInError) {
-      setError(signInError.message);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong, please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Establish session in the browser using the returned tokens
+      const supabase = createClient();
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+
+      router.replace('/dashboard');
+      router.refresh();
+    } catch {
+      setError('Something went wrong, please try again.');
       setIsSubmitting(false);
-      return;
     }
+  };
 
-    router.replace("/dashboard");
-    router.refresh();
+  const infoBannerStyle = {
+    borderRadius: "0.75rem",
+    background: "#e8f4fd",
+    padding: "0.75rem 1rem",
+    fontSize: "0.875rem",
+    color: "#1a5276",
+    margin: 0,
+    fontFamily: "Plus Jakarta Sans, sans-serif",
+  };
+
+  const errorBannerStyle = {
+    borderRadius: "0.75rem",
+    background: S.errorContainer,
+    padding: "0.75rem 1rem",
+    fontSize: "0.875rem",
+    color: S.onErrorContainer,
+    margin: 0,
+    fontFamily: "Plus Jakarta Sans, sans-serif",
   };
 
   return (
     <form style={{ width: "100%", display: "flex", flexDirection: "column", gap: "1.5rem" }} onSubmit={handleLogin}>
+      {/* Confirmed banner */}
+      {confirmed && !error && (
+        <p style={infoBannerStyle}>
+          Your account is pending admin approval. You can log in once approved.
+        </p>
+      )}
+
+      {/* Expired link banner */}
+      {linkExpired && !error && (
+        <p style={errorBannerStyle}>
+          This confirmation link has expired. Please sign up again.
+        </p>
+      )}
+
       {/* Email */}
       <div>
         <FieldLabel>Email Address</FieldLabel>
-        <TextInput 
-          type="email" 
-          placeholder="name@hopecard.com" 
+        <TextInput
+          type="email"
+          placeholder="name@hopecard.com"
           leadIcon={<Mail size={20} />}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -95,19 +149,9 @@ export function LoginForm() {
         </div>
       </div>
 
-      {error ? (
-        <p style={{ 
-          borderRadius: "0.75rem", 
-          background: S.errorContainer, 
-          padding: "0.75rem 1rem", 
-          fontSize: "0.875rem", 
-          color: S.onErrorContainer,
-          margin: 0,
-          fontFamily: "Plus Jakarta Sans, sans-serif"
-        }}>
-          {error}
-        </p>
-      ) : null}
+      {error && (
+        <p style={errorBannerStyle}>{error}</p>
+      )}
 
       <PrimaryBtn label={isSubmitting ? "Signing in..." : "Login"} />
     </form>
