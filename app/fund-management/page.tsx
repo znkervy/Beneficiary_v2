@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
-  Landmark, IdCard, User, ShieldCheck, HelpCircle
+  Landmark, IdCard, User, ShieldCheck, HelpCircle, TrendingUp, ArrowRight
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 
@@ -37,7 +37,7 @@ const TRANSACTIONS: Transaction[] = [
     id: "1",
     date: "Oct 24, 2023",
     campaign: "Higher Ed Scholarship",
-    icon: "school",
+    icon: "🎓",
     iconBg: "#f4dddc",
     iconColor: "#97453e",
     refId: "TXN-4921-X9",
@@ -48,7 +48,7 @@ const TRANSACTIONS: Transaction[] = [
     id: "2",
     date: "Oct 20, 2023",
     campaign: "Healthcare Grant Q4",
-    icon: "medical_services",
+    icon: "⚕️",
     iconBg: "rgba(255,223,152,0.3)",
     iconColor: "#775a00",
     refId: "TXN-8812-P0",
@@ -59,7 +59,7 @@ const TRANSACTIONS: Transaction[] = [
     id: "3",
     date: "Oct 12, 2023",
     campaign: "Community Aid Fund",
-    icon: "volunteer_activism",
+    icon: "🤝",
     iconBg: "#f4dddc",
     iconColor: "#97453e",
     refId: "TXN-1129-K1",
@@ -98,53 +98,93 @@ const WITHDRAWALS: Withdrawal[] = [
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StatusBadge: React.FC<{ status: Transaction["status"] }> = ({ status }) => {
-  const base =
-    "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider";
   return status === "Completed" ? (
-    <span className={`${base} bg-[#f4dddc] text-[#79342e]`}>Completed</span>
+    <span style={{
+      padding: "0.25rem 0.75rem",
+      borderRadius: "999px",
+      fontSize: "0.625rem",
+      fontWeight: 800,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      background: "#f4dddc",
+      color: "#79342e",
+    }}>
+      Completed
+    </span>
   ) : (
-    <span className={`${base} bg-[#ffdf98] text-[#4f3b00]`}>Pending</span>
+    <span style={{
+      padding: "0.25rem 0.75rem",
+      borderRadius: "999px",
+      fontSize: "0.625rem",
+      fontWeight: 800,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      background: "#ffdf98",
+      color: "#4f3b00",
+    }}>
+      Pending
+    </span>
   );
 };
 
 const TransactionRow: React.FC<{ tx: Transaction }> = ({ tx }) => (
-  <tr className="hover:bg-[#fff0ef] transition-colors group">
-    <td className="px-8 py-6 text-sm font-bold">{tx.date}</td>
-    <td className="px-8 py-6">
-      <div className="flex items-center gap-3">
+  <tr style={{ borderBottom: `1px solid ${S.outlineVariant}1a` }}>
+    <td style={{ padding: "1.5rem 2rem", fontSize: "0.875rem", fontWeight: 700 }}>{tx.date}</td>
+    <td style={{ padding: "1.5rem 2rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: tx.iconBg, color: tx.iconColor }}
+          style={{
+            width: "2rem",
+            height: "2rem",
+            borderRadius: "999px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: tx.iconBg,
+            color: tx.iconColor,
+            fontSize: "0.875rem",
+            fontWeight: 700,
+          }}
         >
-          <span className="material-symbols-outlined text-sm">{tx.icon}</span>
+          {tx.icon}
         </div>
-        <span className="text-sm font-medium">{tx.campaign}</span>
+        <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tx.campaign}</span>
       </div>
     </td>
-    <td className="px-8 py-6 text-sm font-mono text-[#554240]">{tx.refId}</td>
-    <td className="px-8 py-6 text-sm font-extrabold text-right">{tx.amount}</td>
-    <td className="px-8 py-6 text-center">
+    <td style={{ padding: "1.5rem 2rem", fontSize: "0.875rem", fontFamily: "monospace", color: "#554240" }}>{tx.refId}</td>
+    <td style={{ padding: "1.5rem 2rem", fontSize: "0.875rem", fontWeight: 800, textAlign: "right" }}>{tx.amount}</td>
+    <td style={{ padding: "1.5rem 2rem", textAlign: "center" }}>
       <StatusBadge status={tx.status} />
     </td>
   </tr>
 );
 
 const WithdrawalItem: React.FC<{ w: Withdrawal }> = ({ w }) => (
-  <div className="relative pl-8 border-l-2 border-[#f28d83]/30">
+  <div style={{ position: "relative", paddingLeft: "2rem", borderLeft: `2px solid ${S.primary}33` }}>
     <div
-      className="absolute -left-[9px] top-0 w-4 h-4 rounded-full ring-4 ring-white"
-      style={{ background: w.dotColor }}
+      style={{
+        position: "absolute",
+        left: "-9px",
+        top: 0,
+        width: "1rem",
+        height: "1rem",
+        borderRadius: "999px",
+        background: w.dotColor,
+        border: "4px solid white",
+      }}
     />
-    <p className="text-[10px] font-extrabold text-[#554240] uppercase tracking-widest mb-1">
+    <p style={{ fontSize: "0.625rem", fontWeight: 800, color: "#554240", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
       {w.date}
     </p>
-    <p className="text-sm font-bold">{w.label}</p>
-    <p className="text-lg font-extrabold text-[#97453e] mt-1">{w.amount}</p>
-    <p
-      className={`text-[10px] font-bold uppercase mt-2 ${
-        w.status === "Successful" ? "text-green-600" : "text-[#4f3b00]"
-      }`}
-    >
+    <p style={{ fontSize: "0.875rem", fontWeight: 700, marginBottom: "0.25rem" }}>{w.label}</p>
+    <p style={{ fontSize: "1.125rem", fontWeight: 800, color: S.primary, marginTop: "0.25rem" }}>{w.amount}</p>
+    <p style={{
+      fontSize: "0.625rem",
+      fontWeight: 700,
+      textTransform: "uppercase",
+      marginTop: "0.5rem",
+      color: w.status === "Successful" ? "#16a34a" : "#4f3b00",
+    }}>
       {w.status}
     </p>
   </div>
@@ -160,44 +200,60 @@ interface NavItemProps {
   href: string;
 }
 
-const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => (
-  <a
-    href={href}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "0.75rem",
-      padding: collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem",
-      justifyContent: collapsed ? "center" : "flex-start",
-      borderRadius: active ? "999px 0 0 999px" : "999px",
-      marginLeft: active ? "1rem" : (collapsed ? "0.75rem" : 0),
-      marginRight: active ? 0 : (collapsed ? "0.75rem" : 0),
-      background: active ? S.surfaceContainerLowest : "transparent",
-      color: active ? S.primary : "#78716c",
-      fontWeight: active ? 700 : 500,
-      fontSize: "0.875rem",
-      textDecoration: "none",
-      boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-      transition: "color 0.15s, background 0.15s, transform 0.15s",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-    }}
-    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
-    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
-  >
-    {icon}
-    {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
-  </a>
-));
+const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => {
+  const paddingValue = collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem";
+  
+  let marginLeftValue: string | number = 0;
+  if (active) {
+    marginLeftValue = "1rem";
+  } else if (collapsed) {
+    marginLeftValue = "0.75rem";
+  }
+  
+  let marginRightValue: string | number = 0;
+  if (!active && collapsed) {
+    marginRightValue = "0.75rem";
+  }
+  
+  return (
+    <a
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: paddingValue,
+        justifyContent: collapsed ? "center" : "flex-start",
+        borderRadius: active ? "999px 0 0 999px" : "999px",
+        marginLeft: marginLeftValue,
+        marginRight: marginRightValue,
+        background: active ? S.surfaceContainerLowest : "transparent",
+        color: active ? S.primary : "#78716c",
+        fontWeight: active ? 700 : 500,
+        fontSize: "0.875rem",
+        textDecoration: "none",
+        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+        transition: "color 0.15s, background 0.15s, transform 0.15s",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+      }}
+      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
+      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
+    >
+      {icon}
+      {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
+    </a>
+  );
+});
 NavItem.displayName = "NavItem";
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard size={20} />, label: "Overview", active: false, href: "/dashboard" },
   { icon: <CreditCard size={20} />, label: "Funds", active: true, href: "/fund-management" },
   { icon: <Landmark size={20} />, label: "Banking", active: false, href: "/banking-details" },
-  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/dashboard" },
-  { icon: <User size={20} />, label: "Profile", active: false, href: "/dashboard" },
-  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/dashboard" },
+  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/identity-verification" },
+  { icon: <User size={20} />, label: "Profile", active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/security-settings" },
 ];
 
 const SIDEBAR_W_EXPANDED = 220;
@@ -339,125 +395,137 @@ const FundManagement: React.FC = () => {
           }}
         >
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-[#241918] tracking-tight mb-2">
-                Fund Management
-              </h1>
-              <p className="text-[#554240] text-lg max-w-2xl">
-                Track, manage, and withdraw your accumulated benefits with
-                dignity.
-              </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1.5rem" }}>
+              <div>
+                <h1 style={{ fontSize: "2.25rem", fontWeight: 800, color: S.onSurface, letterSpacing: "-0.02em", marginBottom: "0.5rem", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                  Fund Management
+                </h1>
+                <p style={{ color: S.onSurfaceVariant, fontSize: "1.125rem", maxWidth: "40rem" }}>
+                  Track, manage, and withdraw your accumulated benefits with dignity.
+                </p>
+              </div>
+              <a 
+                href="/request-withdrawal" 
+                style={{
+                  background: S.primary,
+                  color: S.onPrimary,
+                  padding: "1rem 2rem",
+                  borderRadius: "0.75rem",
+                  fontWeight: 700,
+                  boxShadow: "0 10px 25px rgba(151,69,62,0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  whiteSpace: "nowrap",
+                  textDecoration: "none",
+                  transition: "transform 0.15s",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                <CreditCard size={20} />
+                Request Withdrawal
+              </a>
             </div>
-            <a href="/request-withdrawal" className="bg-[#97453e] text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
-              <span className="material-symbols-outlined">
-                account_balance_wallet
-              </span>
-              Request Withdrawal
-            </a>
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1.5rem" }}>
             {/* Card 1 */}
-            <div className="bg-white p-8 rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.06)] flex flex-col justify-between h-48 relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#f28d83]/10 rounded-full group-hover:scale-110 transition-transform" />
+            <div style={{ background: S.surfaceContainerLowest, padding: "2rem", borderRadius: "0.75rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.06)", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "12rem", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", right: "-1rem", top: "-1rem", width: "6rem", height: "6rem", background: `${S.primary}10`, borderRadius: "999px", transition: "transform 0.3s" }} />
               <div>
-                <p className="text-xs font-bold text-[#554240] tracking-widest uppercase">
+                <p style={{ fontSize: "0.625rem", fontWeight: 700, color: S.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                   Total Funds Received
                 </p>
-                <h3 className="text-4xl font-extrabold text-[#241918] mt-4 tracking-tight">
+                <h3 style={{ fontSize: "2.5rem", fontWeight: 800, color: S.onSurface, marginTop: "1rem", letterSpacing: "-0.02em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
                   45,000{" "}
-                  <span className="text-lg font-medium text-[#554240]">PHP</span>
+                  <span style={{ fontSize: "1.125rem", fontWeight: 500, color: S.onSurfaceVariant, opacity: 0.6 }}>PHP</span>
                 </h3>
               </div>
-              <div className="flex items-center text-[#97453e] gap-1">
-                <span className="material-symbols-outlined text-sm">
-                  trending_up
-                </span>
-                <span className="text-xs font-bold">+12% from last month</span>
+              <div style={{ display: "flex", alignItems: "center", color: S.primary, gap: "0.25rem", marginTop: "1rem" }}>
+                <TrendingUp size={16} />
+                <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>+12% from last month</span>
               </div>
             </div>
 
             {/* Card 2 */}
-            <div className="bg-white p-8 rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.06)] flex flex-col justify-between h-48 relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#ffdf98]/20 rounded-full group-hover:scale-110 transition-transform" />
+            <div style={{ background: S.surfaceContainerLowest, padding: "2rem", borderRadius: "0.75rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.06)", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "12rem", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", right: "-1rem", top: "-1rem", width: "6rem", height: "6rem", background: "rgba(255,223,152,0.2)", borderRadius: "999px" }} />
               <div>
-                <p className="text-xs font-bold text-[#554240] tracking-widest uppercase">
+                <p style={{ fontSize: "0.625rem", fontWeight: 700, color: S.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                   Pending Disbursements
                 </p>
-                <h3 className="text-4xl font-extrabold text-[#241918] mt-4 tracking-tight">
+                <h3 style={{ fontSize: "2.5rem", fontWeight: 800, color: S.onSurface, marginTop: "1rem", letterSpacing: "-0.02em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
                   5,600{" "}
-                  <span className="text-lg font-medium text-[#554240]">PHP</span>
+                  <span style={{ fontSize: "1.125rem", fontWeight: 500, color: S.onSurfaceVariant, opacity: 0.6 }}>PHP</span>
                 </h3>
               </div>
-              <p className="text-xs text-[#554240]">
+              <p style={{ fontSize: "0.8125rem", color: S.onSurfaceVariant, marginTop: "1rem" }}>
                 Awaiting campaign verification
               </p>
             </div>
 
             {/* Card 3 */}
-            <div className="bg-[#97453e] p-8 rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.06)] flex flex-col justify-between h-48 text-white relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 w-32 h-32 bg-[#f28d83]/20 rounded-full group-hover:scale-110 transition-transform" />
+            <div style={{ background: S.primary, padding: "2rem", borderRadius: "0.75rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.06)", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "12rem", color: S.onPrimary, position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", right: "-1rem", top: "-1rem", width: "8rem", height: "8rem", background: "rgba(242,141,131,0.2)", borderRadius: "999px" }} />
               <div>
-                <p className="text-xs font-bold opacity-80 tracking-widest uppercase">
+                <p style={{ fontSize: "0.625rem", fontWeight: 700, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                   Available for Withdrawal
                 </p>
-                <h3 className="text-4xl font-extrabold mt-4 tracking-tight">
+                <h3 style={{ fontSize: "2.5rem", fontWeight: 800, marginTop: "1rem", letterSpacing: "-0.02em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
                   12,300{" "}
-                  <span className="text-lg font-medium opacity-70">PHP</span>
+                  <span style={{ fontSize: "1.125rem", fontWeight: 500, opacity: 0.7 }}>PHP</span>
                 </h3>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold">Ready to transfer</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem" }}>
+                <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>Ready to transfer</span>
+                <ArrowRight size={20} />
               </div>
             </div>
           </div>
 
-          {/* Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Transactions */}
-            <div className="lg:col-span-8">
-              <div className="bg-white rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.06)] overflow-hidden">
-                <div className="p-8 border-b border-[#dac1be]/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <h3 className="text-xl font-extrabold">
+            {/* Content Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: "2rem" }}>
+              {/* Transactions */}
+              <div style={{ gridColumn: "span 8" }}>
+              <div style={{ background: S.surfaceContainerLowest, borderRadius: "0.75rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.06)", overflow: "hidden" }}>
+                <div style={{ padding: "2rem", borderBottom: `1px solid ${S.outlineVariant}1a`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                  <h3 style={{ fontSize: "1.25rem", fontWeight: 800, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
                     Transaction History
                   </h3>
-                  <div className="flex gap-2">
-                    <button className="bg-[#fff0ef] px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border border-[#dac1be]/20 hover:bg-[#f4dddc] transition-colors">
-                      <span className="material-symbols-outlined text-sm">
-                        calendar_month
-                      </span>
-                      Last 30 Days
-                    </button>
-                    <button className="bg-[#fff0ef] px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border border-[#dac1be]/20 hover:bg-[#f4dddc] transition-colors">
-                      <span className="material-symbols-outlined text-sm">
-                        filter_list
-                      </span>
-                      Status
-                    </button>
-                  </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                     <thead>
-                      <tr className="bg-[#fff0ef]/50 text-[#554240] text-[10px] font-bold uppercase tracking-widest">
-                        {["Date", "Source Campaign", "Reference ID", "Amount", "Status"].map(
-                          (h) => (
+                      <tr style={{ background: S.surfaceContainerLow }}>
+                        {["Date", "Source Campaign", "Reference ID", "Amount", "Status"].map((h, i) => {
+                          let textAlign: "left" | "right" | "center" = "left";
+                          if (h === "Amount") textAlign = "right";
+                          if (h === "Status") textAlign = "center";
+                          
+                          return (
                             <th
                               key={h}
-                              className={`px-8 py-5 ${
-                                h === "Amount" ? "text-right" : ""
-                              } ${h === "Status" ? "text-center" : ""}`}
+                              style={{
+                                padding: "1rem 2rem",
+                                fontSize: "0.625rem",
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.1em",
+                                color: S.onSurfaceVariant,
+                                textAlign,
+                              }}
                             >
                               {h}
                             </th>
-                          )
-                        )}
+                          );
+                        })}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#dac1be]/10">
+                    <tbody>
                       {TRANSACTIONS.map((tx) => (
                         <TransactionRow key={tx.id} tx={tx} />
                       ))}
@@ -468,62 +536,45 @@ const FundManagement: React.FC = () => {
             </div>
 
             {/* Withdrawals Sidebar */}
-            <div className="lg:col-span-4">
-              <div className="bg-[#fae3e1]/40 p-8 rounded-xl shadow-[0px_12px_32px_rgba(151,69,62,0.04)] border border-[#dac1be]/10">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-extrabold">Withdrawals</h3>
-                  <span className="material-symbols-outlined text-stone-400">
-                    history
-                  </span>
+            <div style={{ gridColumn: "span 4" }}>
+              <div style={{ background: `${S.surfaceContainerHigh}66`, padding: "2rem", borderRadius: "0.75rem", boxShadow: "0px 12px 32px rgba(151,69,62,0.04)", border: `1px solid ${S.outlineVariant}1a` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
+                  <h3 style={{ fontSize: "1.25rem", fontWeight: 800, fontFamily: "Plus Jakarta Sans, sans-serif" }}>Withdrawals</h3>
                 </div>
-                <div className="space-y-8">
+                <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
                   {WITHDRAWALS.map((w) => (
                     <WithdrawalItem key={w.id} w={w} />
                   ))}
                 </div>
-                <button className="w-full mt-10 text-[#97453e] font-bold text-xs flex items-center justify-center gap-2 hover:underline">
+                <button 
+                  type="button"
+                  style={{ 
+                    width: "100%", 
+                    marginTop: "2.5rem", 
+                    color: S.primary, 
+                    fontWeight: 700, 
+                    fontSize: "0.8125rem", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    gap: "0.5rem",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "Plus Jakarta Sans, sans-serif",
+                    transition: "opacity 0.15s"
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
                   View Full Report
-                  <span className="material-symbols-outlined text-sm">
-                    open_in_new
-                  </span>
+                  <ArrowRight size={16} />
                 </button>
               </div>
             </div>
           </div>
         </main>
       </div>
-
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#dac1be]/15 flex justify-around py-4 z-50 shadow-lg">
-        {[
-          { icon: "dashboard", label: "Home", active: false, href: "/dashboard" },
-          { icon: "payments", label: "Funds", active: true, href: "/fund-management" },
-          { icon: "account_balance", label: "Bank", active: false, href: "/banking-details" },
-          { icon: "person", label: "Profile", active: false, href: "/dashboard" },
-        ].map((item) => (
-          <a
-            key={item.label}
-            href={item.href}
-            className={`flex flex-col items-center ${
-              item.active ? "text-[#97453e]" : "text-stone-500"
-            }`}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={
-                item.active
-                  ? { fontVariationSettings: "'FILL' 1" }
-                  : undefined
-              }
-            >
-              {item.icon}
-            </span>
-            <span className="text-[10px] font-bold uppercase mt-1">
-              {item.label}
-            </span>
-          </a>
-        ))}
-      </nav>
     </div>
   );
 };

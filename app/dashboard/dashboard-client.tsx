@@ -100,9 +100,9 @@ const NAV_ITEMS = [
   { icon: <LayoutDashboard size={20} />, label: "Overview",  active: true, href: "/dashboard"  },
   { icon: <CreditCard size={20} />,      label: "Funds",     active: false, href: "/fund-management" },
   { icon: <Landmark size={20} />,        label: "Banking",   active: false, href: "/banking-details" },
-  { icon: <IdCard size={20} />,          label: "Identity",  active: false, href: "/dashboard" },
-  { icon: <User size={20} />,            label: "Profile",   active: false, href: "/dashboard" },
-  { icon: <ShieldCheck size={20} />,     label: "Security",  active: false, href: "/dashboard" },
+  { icon: <IdCard size={20} />,          label: "Identity",  active: false, href: "/identity-verification" },
+  { icon: <User size={20} />,            label: "Profile",   active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />,     label: "Security",  active: false, href: "/security-settings" },
 ];
 
 const TRANSACTIONS: Omit<TransactionRowProps, "actionIcon">[] = [
