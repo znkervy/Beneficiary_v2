@@ -44,12 +44,25 @@ export function LoginForm({ confirmed, linkExpired }: LoginFormProps) {
         return;
       }
 
+      // Guard against missing session data
+      if (!data.session?.access_token || !data.session?.refresh_token) {
+        setError('Something went wrong, please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Establish session in the browser using the returned tokens
       const supabase = createClient();
-      await supabase.auth.setSession({
+      const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
       });
+
+      if (sessionError) {
+        setError('Failed to establish session. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
 
       router.replace('/dashboard');
       router.refresh();
@@ -84,7 +97,7 @@ export function LoginForm({ confirmed, linkExpired }: LoginFormProps) {
       {/* Confirmed banner */}
       {confirmed && !error && (
         <p style={infoBannerStyle}>
-          Your account is pending admin approval. You can log in once approved.
+          Email confirmed. Enter your credentials to sign in.
         </p>
       )}
 
