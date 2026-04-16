@@ -166,7 +166,7 @@ export function LoginForm({ confirmed, linkExpired }: LoginFormProps) {
         <p style={errorBannerStyle}>{error}</p>
       )}
 
-      <PrimaryBtn label={isSubmitting ? "Signing in..." : "Login"} />
+      <PrimaryBtn label={isSubmitting ? "Signing in..." : "Login"} disabled={isSubmitting} />
     </form>
   );
 }

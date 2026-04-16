@@ -89,6 +89,7 @@ export default function SignupPage() {
         return;
       }
 
+      setIsSubmitting(false);
       setSubmitted(true);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -371,7 +372,7 @@ export default function SignupPage() {
                 </label>
               </div>
 
-              <PrimaryBtn label={isSubmitting ? "Creating account..." : "Sign Up"} />
+              <PrimaryBtn label={isSubmitting ? "Creating account..." : "Sign Up"} disabled={isSubmitting} />
 
               <p style={{ textAlign: "center", color: S.onSurfaceVariant, fontSize: "0.875rem", fontWeight: 500, margin: 0 }}>
                 Already have an account?{" "}

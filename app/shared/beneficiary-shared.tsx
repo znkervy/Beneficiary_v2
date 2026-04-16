@@ -183,10 +183,11 @@ export const SelectInput = React.memo<{ children: React.ReactNode }>(({ children
 SelectInput.displayName = "SelectInput";
 
 // ─── Primary Submit Button ─────────────────────────────────────────────────────
-export const PrimaryBtn = React.memo<{ label: string; type?: "submit" | "button" }>(
-  ({ label, type = "submit" }) => (
+export const PrimaryBtn = React.memo<{ label: string; type?: "submit" | "button"; disabled?: boolean }>(
+  ({ label, type = "submit", disabled = false }) => (
     <button
       type={type}
+      disabled={disabled}
       style={{
         width: "100%",
         padding: "1rem",
@@ -196,16 +197,17 @@ export const PrimaryBtn = React.memo<{ label: string; type?: "submit" | "button"
         borderRadius: "999px",
         fontSize: "1.125rem",
         border: "none",
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
         boxShadow: "0 4px 16px rgba(242,141,131,0.3)",
         transition: "transform 0.15s",
         fontFamily: "Plus Jakarta Sans, sans-serif",
         marginTop: "1rem",
+        opacity: disabled ? 0.6 : 1,
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.01)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1.01)")}
+      onMouseEnter={(e) => !disabled && (e.currentTarget.style.transform = "scale(1.01)")}
+      onMouseLeave={(e) => !disabled && (e.currentTarget.style.transform = "scale(1)")}
+      onMouseDown={(e) => !disabled && (e.currentTarget.style.transform = "scale(0.98)")}
+      onMouseUp={(e) => !disabled && (e.currentTarget.style.transform = "scale(1.01)")}
     >
       {label}
     </button>
