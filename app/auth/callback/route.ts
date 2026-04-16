@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -11,14 +11,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', origin));
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    console.error('Callback error:', error.message);
+  if (error || !data.session) {
+    console.error('Callback error:', error?.message ?? 'No session returned');
     return NextResponse.redirect(new URL('/login?error=expired', origin));
   }
 
