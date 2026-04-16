@@ -25,8 +25,21 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Define all routes that require authentication
+  const PROTECTED_PATHS = [
+    '/dashboard',
+    '/banking-details',
+    '/fund-management',
+    '/request-withdrawal',
+    '/connect-bank',
+  ];
+
+  const isProtected = PROTECTED_PATHS.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
   // Redirect unauthenticated users away from protected routes
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!user && isProtected) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
