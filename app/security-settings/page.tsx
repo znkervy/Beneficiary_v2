@@ -7,6 +7,7 @@ import {
   HelpCircle, Vibrate, Fingerprint, LockKeyhole, Info,
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +215,10 @@ const SecuritySettings: React.FC = () => {
   const [mfaEnabled, setMfaEnabled] = useState<boolean>(true);
   const [bioEnabled, setBioEnabled] = useState<boolean>(false);
   const [form, setForm] = useState<PasswordForm>({ current: "", next: "", confirm: "" });
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState<boolean>(false);
+  const [pwLoading, setPwLoading] = useState<boolean>(false);
+  const supabase = createClient();
 
   const logins: LoginEntry[] = [
     { date: "Oct 24, 2023 • 10:24 AM", device: "iPhone 15 Pro", ip: "192.168.1.1", status: "Success" },
@@ -225,8 +230,61 @@ const SecuritySettings: React.FC = () => {
     (field: keyof PasswordForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setPwError(null);
+    setPwSuccess(false);
+
+    if (form.next.length < 8 || !/\d/.test(form.next)) {
+      setPwError("New password must be at least 8 characters and contain one number.");
+      return;
+    }
+    if (form.next !== form.confirm) {
+      setPwError("New passwords do not match.");
+      return;
+    }
+
+    setPwLoading(true);
+
+    try {
+      // Step 1: Get current user's email
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        setPwError("Could not identify your account. Please log in again.");
+        setPwLoading(false);
+        return;
+      }
+
+      // Step 2: Re-authenticate with current password to verify it
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: form.current,
+      });
+
+      if (signInError) {
+        setPwError("Current password is incorrect.");
+        setPwLoading(false);
+        return;
+      }
+
+      // Step 3: Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: form.next,
+      });
+
+      if (updateError) {
+        setPwError(updateError.message);
+        setPwLoading(false);
+        return;
+      }
+
+      setPwSuccess(true);
+      setForm({ current: "", next: "", confirm: "" });
+    } catch {
+      setPwError("Something went wrong. Please try again.");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
@@ -367,8 +425,12 @@ const SecuritySettings: React.FC = () => {
                     </p>
                   </div>
                   <div style={{ padding: "0.5rem" }}>
-                    <a
-                      href="/login"
+                    <button
+                      onClick={async () => {
+                        const { createClient } = await import("@/utils/supabase/client");
+                        await createClient().auth.signOut();
+                        window.location.href = "/login";
+                      }}
                       style={{
                         width: "100%",
                         padding: "0.75rem 1rem",
@@ -391,7 +453,7 @@ const SecuritySettings: React.FC = () => {
                     >
                       <span style={{ fontSize: "1.25rem" }}>→</span>
                       <span>Log Out</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </>
@@ -766,6 +828,7 @@ const SecuritySettings: React.FC = () => {
                   ))}
                   <button
                     type="submit"
+                    disabled={pwLoading}
                     style={{
                       width: "100%",
                       padding: "1rem",
@@ -775,18 +838,46 @@ const SecuritySettings: React.FC = () => {
                       fontWeight: 700,
                       fontSize: "1.125rem",
                       border: "none",
-                      cursor: "pointer",
+                      cursor: pwLoading ? "not-allowed" : "pointer",
+                      opacity: pwLoading ? 0.7 : 1,
                       transition: "opacity 0.15s, transform 0.15s",
                       boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                       fontFamily: "Plus Jakarta Sans, sans-serif",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
+                    onMouseEnter={(e) => { if (!pwLoading) e.currentTarget.style.opacity = "0.9"; }}
+                    onMouseLeave={(e) => { if (!pwLoading) e.currentTarget.style.opacity = "1"; }}
+                    onMouseDown={(e) => { if (!pwLoading) e.currentTarget.style.transform = "scale(0.98)"; }}
                     onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
                   >
-                    Update Password
+                    {pwLoading ? "Updating..." : "Update Password"}
                   </button>
+
+                  {pwError && (
+                    <p style={{
+                      borderRadius: "0.75rem",
+                      background: S.errorContainer,
+                      padding: "0.75rem 1rem",
+                      fontSize: "0.875rem",
+                      color: S.onErrorContainer,
+                      margin: 0,
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}>
+                      {pwError}
+                    </p>
+                  )}
+                  {pwSuccess && (
+                    <p style={{
+                      borderRadius: "0.75rem",
+                      background: "#dcfce7",
+                      padding: "0.75rem 1rem",
+                      fontSize: "0.875rem",
+                      color: "#166534",
+                      margin: 0,
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}>
+                      Password updated successfully.
+                    </p>
+                  )}
                 </form>
                 <div
                   style={{

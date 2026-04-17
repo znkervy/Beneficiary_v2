@@ -37,8 +37,7 @@ export const S = {
   coralRose:              "#F28D83",
 } as const;
 
-export const LOGO_SRC =
-  "https://lh3.googleusercontent.com/aida/ADBb0ujqlbFjxb-vqD1WgFNQ7WN8atN5VNFe8EdRcFkmt2SaH7OYXV1UBqIBEJUw31_m4X648F6Uy1ci1RGQbc9FX4icAwWSGgLMOXAtI27itQxR41xdx99cv488HWJ0X-0afDK1ull8jQSIYmq7JqhwzjoiE_-yKlkHuXdtHCa01xNaNUnBJnlfeUg94zhLvIPc7uQwSHCqGfO1DD4CaPBQNdqnHz4FxLd2MxOWbbpAmg-zSyp1DIWwb0A5CsE_oCvdLKTVpL22L1mc_lk";
+export const LOGO_SRC = "/images/logo_h.png";
 
 // ─── Shared Global Style ───────────────────────────────────────────────────────
 export const BeneficiaryStyle = () => (
@@ -158,7 +157,7 @@ export const TextInput = React.memo<TextInputProps>(
 TextInput.displayName = "TextInput";
 
 // ─── Select ───────────────────────────────────────────────────────────────────
-export const SelectInput = React.memo<{ children: React.ReactNode }>(({ children }) => (
+export const SelectInput = React.memo<React.SelectHTMLAttributes<HTMLSelectElement>>(({ children, ...props }) => (
   <div style={{ position: "relative" }}>
     <select
       style={{
@@ -168,6 +167,7 @@ export const SelectInput = React.memo<{ children: React.ReactNode }>(({ children
         cursor: "pointer",
       }}
       {...focusHandlers}
+      {...props}
     >
       {children}
     </select>

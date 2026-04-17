@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck,
   HelpCircle, BadgeCheck, Shield as ShieldIcon, Vibrate, Fingerprint, Calendar,
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,12 +196,14 @@ const SIDEBAR_W_COLLAPSED = 80;
 const ProfileSettings: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const supabase = createClient();
 
   const [info, setInfo] = useState<PersonalInfo>({
-    fullName: "Alex Rivers",
-    email: "alex.rivers@hopecard.io",
-    phone: "+1 (555) 012-3456",
-    dob: "1992-04-12",
+    fullName: "",
+    email: "",
+    phone: "",
+    dob: "",
   });
 
   const [prefs, setPrefs] = useState<SecurityPreference[]>([
@@ -219,6 +222,44 @@ const ProfileSettings: React.FC = () => {
       enabled: false,
     },
   ]);
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.error("No user found");
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("beneficiary_profiles")
+          .select("first_name, last_name, email, phone")
+          .eq("auth_user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching profile:", error.message);
+        } else if (data) {
+          setInfo({
+            fullName: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
+            email: data.email || "",
+            phone: data.phone || "",
+            dob: "", // dob not in schema yet
+          });
+        }
+      } catch (err) {
+        console.error("Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleInfoChange =
     (field: keyof PersonalInfo) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -369,8 +410,12 @@ const ProfileSettings: React.FC = () => {
                     </p>
                   </div>
                   <div style={{ padding: "0.5rem" }}>
-                    <a
-                      href="/login"
+                    <button
+                      onClick={async () => {
+                        const { createClient } = await import("@/utils/supabase/client");
+                        await createClient().auth.signOut();
+                        window.location.href = "/login";
+                      }}
                       style={{
                         width: "100%",
                         padding: "0.75rem 1rem",
@@ -393,7 +438,7 @@ const ProfileSettings: React.FC = () => {
                     >
                       <span style={{ fontSize: "1.25rem" }}>→</span>
                       <span>Log Out</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </>
@@ -542,15 +587,23 @@ const ProfileSettings: React.FC = () => {
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2rem" }}>
-                <Field label="Full Name" value={info.fullName} onChange={handleInfoChange("fullName")} />
-                <Field label="Email Address" value={info.email} type="email" onChange={handleInfoChange("email")} />
-                <Field label="Phone Number" value={info.phone} type="tel" onChange={handleInfoChange("phone")} />
-                <Field
-                  label="Date of Birth"
-                  value={info.dob}
-                  type="date"
-                  onChange={handleInfoChange("dob")}
-                />
+                {loading ? (
+                  <div style={{ gridColumn: "1 / -1", color: S.onSurfaceVariant, fontSize: "0.875rem" }}>
+                    Loading profile...
+                  </div>
+                ) : (
+                  <>
+                    <Field label="Full Name" value={info.fullName} onChange={handleInfoChange("fullName")} />
+                    <Field label="Email Address" value={info.email} type="email" onChange={handleInfoChange("email")} />
+                    <Field label="Phone Number" value={info.phone} type="tel" onChange={handleInfoChange("phone")} />
+                    <Field
+                      label="Date of Birth"
+                      value={info.dob}
+                      type="date"
+                      onChange={handleInfoChange("dob")}
+                    />
+                  </>
+                )}
               </div>
             </section>
 

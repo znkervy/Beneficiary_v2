@@ -246,15 +246,32 @@ export default function BankingDetailsPage() {
       }
 
       const { data, error } = await supabase
-        .from("bank_accounts")
-        .select("*")
-        .eq("beneficiary_id", user.id)
-        .order("created_at", { ascending: false });
+        .from("beneficiary_profiles")
+        .select("id, bank_name, account_name, account_number, created_at, auth_user_id")
+        .eq("auth_user_id", user.id)
+        .single();
+
+      console.log("DEBUG user.id:", user.id);
+      console.log("DEBUG data:", JSON.stringify(data));
+      console.log("DEBUG error:", error?.message, error?.code);
 
       if (error) {
-        console.error("Error fetching bank accounts:", error);
+        console.error("Error fetching bank accounts:", error.message, error.code, error.details);
+      } else if (data && data.account_number) {
+        // Transform the profile data to match the BankAccount interface
+        const bankAccount: BankAccount = {
+          id: data.id,
+          bank_name: data.bank_name || "Bank Account",
+          account_holder: data.account_name || "Account Holder",
+          account_number: data.account_number,
+          is_primary: true,
+          is_verified: true,
+          created_at: data.created_at,
+          beneficiary_id: data.auth_user_id,
+        };
+        setBankAccounts([bankAccount]);
       } else {
-        setBankAccounts(data || []);
+        setBankAccounts([]);
       }
     } catch (err) {
       console.error("Error:", err);
@@ -264,26 +281,25 @@ export default function BankingDetailsPage() {
   };
 
   const handleDeleteAccount = async (accountId: string) => {
-    if (!confirm("Are you sure you want to remove this bank account?")) {
+    if (!confirm("Are you sure you want to remove your bank details?")) {
       return;
     }
 
     try {
       const { error } = await supabase
-        .from("bank_accounts")
-        .delete()
+        .from("beneficiary_profiles")
+        .update({ bank_name: null, account_name: null, account_number: null })
         .eq("id", accountId);
 
       if (error) {
-        console.error("Error deleting account:", error);
-        alert("Failed to remove bank account");
+        console.error("Error removing bank details:", error.message);
+        alert("Failed to remove bank details");
       } else {
-        // Refresh the list
         fetchBankAccounts();
       }
     } catch (err) {
       console.error("Error:", err);
-      alert("Failed to remove bank account");
+      alert("Failed to remove bank details");
     }
   };
 
@@ -402,8 +418,12 @@ export default function BankingDetailsPage() {
                     </p>
                   </div>
                   <div style={{ padding: "0.5rem" }}>
-                    <a
-                      href="/login"
+                    <button
+                      onClick={async () => {
+                        const { createClient } = await import("@/utils/supabase/client");
+                        await createClient().auth.signOut();
+                        window.location.href = "/login";
+                      }}
                       style={{
                         width: "100%",
                         padding: "0.75rem 1rem",
@@ -426,7 +446,7 @@ export default function BankingDetailsPage() {
                     >
                       <span style={{ fontSize: "1.25rem" }}>→</span>
                       <span>Log Out</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </>

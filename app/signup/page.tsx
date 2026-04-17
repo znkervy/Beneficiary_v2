@@ -1,12 +1,14 @@
 // app/signup/page.tsx
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { User, Landmark, ShieldCheck, CloudUpload, CheckCircle } from "lucide-react";
 import {
   S, BeneficiaryStyle, AmbientCard, CardLogo, FieldLabel,
   TextInput, SelectInput, FormSection, PrimaryBtn, BeneficiaryFooter,
 } from "../shared/beneficiary-shared";
+
+type Campaign = { id: string; title: string };
 
 const FieldGrid = ({ children }: { children: React.ReactNode }) => (
   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1.5rem" }}>
@@ -26,6 +28,10 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted]     = useState(false);
 
+  // Campaigns
+  const [campaigns, setCampaigns]     = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId]   = useState("");
+
   // Form fields
   const [firstName, setFirstName]     = useState("");
   const [lastName, setLastName]       = useState("");
@@ -35,6 +41,19 @@ export default function SignupPage() {
   const [accountName, setAccountName] = useState("");
   const [bankName, setBankName]       = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+
+  const toTitleCase = (value: string) =>
+    value.replace(/\b\w/g, (char) => char.toUpperCase());
+
+  // Fetch active campaigns on mount
+  useEffect(() => {
+    fetch('/api/campaigns')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.campaigns) setCampaigns(data.campaigns);
+      })
+      .catch(() => {/* silently fail — user can still submit without campaign */});
+  }, []);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
@@ -54,6 +73,10 @@ export default function SignupPage() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+    if (accountNumber && (accountNumber.length < 10 || accountNumber.length > 16)) {
+      setError("Account number must be between 10 and 16 digits.");
       return;
     }
     if (!idFile) {
@@ -76,6 +99,7 @@ export default function SignupPage() {
       formData.append("accountName", accountName);
       formData.append("bankName", bankName);
       formData.append("accountNumber", accountNumber);
+      if (campaignId) formData.append("campaignId", campaignId);
       formData.append("idFile", idFile);
 
       const res = await fetch("/api/auth/signup", {
@@ -191,7 +215,7 @@ export default function SignupPage() {
                     type="text"
                     placeholder="John"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => setFirstName(toTitleCase(e.target.value))}
                     required
                   />
                 </div>
@@ -201,17 +225,20 @@ export default function SignupPage() {
                     type="text"
                     placeholder="Doe"
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) => setLastName(toTitleCase(e.target.value))}
                     required
                   />
                 </div>
                 <div>
                   <FieldLabel>Campaign</FieldLabel>
-                  <SelectInput>
-                    <option>Select a Campaign</option>
-                    <option>Community Uplift 2024</option>
-                    <option>Health &amp; Wellness Fund</option>
-                    <option>Educational Grant Program</option>
+                  <SelectInput
+                    value={campaignId}
+                    onChange={(e) => setCampaignId(e.target.value)}
+                  >
+                    <option value="">Select a Campaign</option>
+                    {campaigns.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
                   </SelectInput>
                 </div>
                 <FullField>
@@ -266,19 +293,27 @@ export default function SignupPage() {
                     onChange={(e) => setBankName(e.target.value)}
                   >
                     <option value="">Select your bank</option>
-                    <option>BDO</option>
-                    <option>BPI</option>
-                    <option>Metrobank</option>
-                    <option>Landbank</option>
+                    <option value="BDO">BDO</option>
+                    <option value="BPI">BPI</option>
+                    <option value="Metrobank">Metrobank</option>
+                    <option value="Landbank">Landbank</option>
                   </SelectInput>
                 </div>
                 <FullField>
-                  <FieldLabel>Account Number</FieldLabel>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.375rem" }}>
+                    <FieldLabel>Account Number</FieldLabel>
+                    <span style={{ fontSize: "0.7rem", color: `${S.onSurfaceVariant}99`, fontWeight: 600 }}>(10–16 digits)</span>
+                  </div>
                   <TextInput
                     type="text"
-                    placeholder="0000 0000 0000 00"
+                    placeholder="0000 0000 0000 0000"
                     value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 16);
+                      setAccountNumber(digits);
+                    }}
+                    minLength={10}
+                    maxLength={16}
                   />
                 </FullField>
               </FieldGrid>
@@ -286,6 +321,14 @@ export default function SignupPage() {
 
             {/* ── Section 3: Identity Verification ─────────────────────── */}
             <FormSection icon={<ShieldCheck size={20} />} title="Identity Verification">
+              <input
+                ref={fileInputRef}
+                id="id-upload"
+                type="file"
+                accept=".jpg,.jpeg,.png,.pdf"
+                onChange={handleFile}
+                style={{ display: "none" }}
+              />
               <label
                 htmlFor="id-upload"
                 style={{
@@ -293,47 +336,45 @@ export default function SignupPage() {
                   width: "100%",
                   padding: "2.5rem 1.5rem",
                   borderRadius: "1rem",
-                  background: S.surfaceContainerLow,
-                  border: `2px dashed ${S.outlineVariant}66`,
+                  background: idFile ? "#f0fdf4" : S.surfaceContainerLow,
+                  border: `2px dashed ${idFile ? "#16a34a" : `${S.outlineVariant}66`}`,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   textAlign: "center",
                   cursor: "pointer",
-                  transition: "border-color 0.15s",
+                  transition: "border-color 0.15s, background 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${S.primary}80`)}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = `${S.outlineVariant}66`)}
+                onMouseEnter={(e) => { if (!idFile) e.currentTarget.style.borderColor = `${S.primary}80`; }}
+                onMouseLeave={(e) => { if (!idFile) e.currentTarget.style.borderColor = `${S.outlineVariant}66`; }}
               >
                 <div
                   style={{
                     width: "3rem",
                     height: "3rem",
                     borderRadius: "999px",
-                    background: `${S.primary}1a`,
+                    background: idFile ? "#dcfce7" : `${S.primary}1a`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "1rem",
+                    transition: "background 0.2s",
                   }}
                 >
-                  <CloudUpload size={24} style={{ color: S.primary }} />
+                  {idFile
+                    ? <CheckCircle size={24} style={{ color: "#16a34a" }} />
+                    : <CloudUpload size={24} style={{ color: S.primary }} />
+                  }
                 </div>
-                <p style={{ fontSize: "0.875rem", fontWeight: 600, color: S.onSurface, margin: "0 0 0.25rem" }}>
+                <p style={{ fontSize: "0.875rem", fontWeight: 600, color: idFile ? "#16a34a" : S.onSurface, margin: "0 0 0.25rem" }}>
                   {idFile ? idFile.name : "Click to upload Government Issued ID"}
                 </p>
-                <p style={{ fontSize: "0.625rem", color: `${S.onSurfaceVariant}99`, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", margin: 0 }}>
-                  JPG, PNG, PDF (Max 5MB)
-                </p>
-                <input
-                  ref={fileInputRef}
-                  id="id-upload"
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={handleFile}
-                  style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
-                />
+                {!idFile && (
+                  <p style={{ fontSize: "0.625rem", color: `${S.onSurfaceVariant}99`, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", margin: 0 }}>
+                    JPG, PNG, PDF (Max 5MB)
+                  </p>
+                )}
               </label>
             </FormSection>
 

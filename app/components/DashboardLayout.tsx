@@ -200,8 +200,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </p>
                   </div>
                   <div style={{ padding: "0.5rem" }}>
-                    <a
-                      href="/login"
+                    <button
+                      onClick={async () => {
+                        const { createClient } = await import("@/utils/supabase/client");
+                        await createClient().auth.signOut();
+                        window.location.href = "/login";
+                      }}
                       style={{
                         width: "100%",
                         padding: "0.75rem 1rem",

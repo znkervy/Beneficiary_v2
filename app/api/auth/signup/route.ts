@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Raise Next.js body size limit to accommodate ID file uploads up to 5 MB
 export const maxDuration = 30;
+export const dynamic = 'force-dynamic';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'pdf']);
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest) {
     const accountName = formData.get('accountName') as string | null;
     const bankName = formData.get('bankName') as string | null;
     const accountNumber = formData.get('accountNumber') as string | null;
+    const campaignId = formData.get('campaignId') as string | null;
     const idFile = formData.get('idFile') as File | null;
 
     if (!firstName || !lastName || !email || !password) {
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
     // Use only the sanitised extension — never embed the user-supplied filename
     const storageKey = `${userId}/${Date.now()}.${safeExt}`;
     const fileBuffer = await idFile.arrayBuffer();
+    console.log('[signup] uploading file to storage, key:', storageKey, 'size:', fileBuffer.byteLength);
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('beneficiary-ids')
@@ -121,16 +124,18 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('[signup] storage upload error:', uploadError.message);
+      console.error('[signup] storage upload error:', uploadError.message, uploadError);
       // Compensating action: remove the orphaned auth user
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
-        { error: 'ID upload failed. Please try again.' },
+        { error: `ID upload failed: ${uploadError.message}` },
         { status: 500 }
       );
     }
 
     // Step 3: Insert beneficiary_profiles row
+    console.log('[signup] inserting profile for user:', userId);
+    console.log('[signup] bank fields — bankName:', bankName, '| accountName:', accountName, '| accountNumber:', accountNumber);
     const { error: profileError } = await supabaseAdmin
       .from('beneficiary_profiles')
       .insert({
@@ -142,16 +147,17 @@ export async function POST(request: NextRequest) {
         bank_name: bankName || null,
         account_number: accountNumber || null,
         id_verification_key: storageKey,
+        campaign_id: campaignId || null,
         status: 'pending',
       });
 
     if (profileError) {
-      console.error('[signup] profile insert error:', profileError.message);
+      console.error('[signup] profile insert error:', profileError.message, profileError);
       // Compensating actions: remove orphaned auth user and uploaded file
       await supabaseAdmin.auth.admin.deleteUser(userId);
       await supabaseAdmin.storage.from('beneficiary-ids').remove([storageKey]);
       return NextResponse.json(
-        { error: 'Account setup failed. Please try again.' },
+        { error: `Account setup failed: ${profileError.message}` },
         { status: 500 }
       );
     }

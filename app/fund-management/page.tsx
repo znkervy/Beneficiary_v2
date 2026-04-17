@@ -195,9 +195,9 @@ const NAV_ITEMS = [
   { icon: <LayoutDashboard size={20} />, label: "Overview", active: false, href: "/dashboard" },
   { icon: <CreditCard size={20} />, label: "Funds", active: true, href: "/fund-management" },
   { icon: <Landmark size={20} />, label: "Banking", active: false, href: "/banking-details" },
-  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/dashboard" },
-  { icon: <User size={20} />, label: "Profile", active: false, href: "/dashboard" },
-  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/dashboard" },
+  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/identity-verification" },
+  { icon: <User size={20} />, label: "Profile", active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/security-settings" },
 ];
 
 const SIDEBAR_W_EXPANDED = 220;
@@ -316,8 +316,12 @@ const FundManagement: React.FC = () => {
                     </p>
                   </div>
                   <div style={{ padding: "0.5rem" }}>
-                    <a
-                      href="/login"
+                    <button
+                      onClick={async () => {
+                        const { createClient } = await import("@/utils/supabase/client");
+                        await createClient().auth.signOut();
+                        window.location.href = "/login";
+                      }}
                       style={{
                         width: "100%",
                         padding: "0.75rem 1rem",
@@ -340,7 +344,7 @@ const FundManagement: React.FC = () => {
                     >
                       <span style={{ fontSize: "1.25rem" }}>→</span>
                       <span>Log Out</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </>
