@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck,
   HelpCircle, MoreVertical, ZoomIn, UploadCloud, ArrowRight, Shield, HelpCircleIcon,
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,13 @@ interface VerificationEntry {
   docType: string;
   docIcon: React.ReactNode;
   status: VerificationStatus;
+}
+
+interface ProfileDoc {
+  url: string | null;
+  ext: string;
+  status: VerificationStatus;
+  uploadedAt: string;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -170,14 +178,104 @@ const SIDEBAR_W_COLLAPSED = 80;
 const IdentityVerification: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
-
-  const history: VerificationEntry[] = [
-    { date: "Mar 12, 2024", docType: "Passport (P-9283)", docIcon: <IdCard size={20} />, status: "Approved" },
-    { date: "Jan 05, 2024", docType: "Driver's License", docIcon: <CreditCard size={20} />, status: "Pending" },
-    { date: "Dec 20, 2023", docType: "National ID Card", docIcon: <Landmark size={20} />, status: "Rejected" },
-  ];
+  const [history, setHistory] = useState<VerificationEntry[]>([]);
+  const [profileDoc, setProfileDoc] = useState<ProfileDoc | null>(null);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
+
+  useEffect(() => {
+    async function fetchDocuments() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("beneficiary_profiles")
+        .select("id, id_verification_key, status, created_at")
+        .eq("auth_user_id", user.id)
+        .single();
+
+      if (!profile) return;
+      setActiveSince(new Date(profile.created_at).getFullYear());
+
+      // Fetch additional docs and signup doc URL in parallel
+      const [{ data: docs }, signedUrlRes] = await Promise.all([
+        supabase
+          .from("beneficiary_identity_documents")
+          .select("id, document_label, status, submitted_at")
+          .eq("beneficiary_profile_id", profile.id)
+          .order("submitted_at", { ascending: false }),
+        profile.id_verification_key
+          ? fetch(`/api/identity-documents/signed-url?key=${encodeURIComponent(profile.id_verification_key)}`)
+          : Promise.resolve(null),
+      ]);
+
+      // Build active document card state from profile
+      if (profile.id_verification_key) {
+        const ext = profile.id_verification_key.split(".").pop()?.toLowerCase() ?? "";
+        const profileStatus: VerificationStatus =
+          profile.status === "active" ? "Approved" : profile.status === "rejected" ? "Rejected" : "Pending";
+        let signedUrl: string | null = null;
+        if (signedUrlRes && signedUrlRes.ok) {
+          const json = await signedUrlRes.json();
+          signedUrl = json.url ?? null;
+        }
+        setProfileDoc({
+          url: signedUrl,
+          ext,
+          status: profileStatus,
+          uploadedAt: new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+        });
+      }
+
+      // Build history: additional uploaded docs
+      const entries: VerificationEntry[] = (docs ?? []).map((d: any) => ({
+        date: new Date(d.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        docType: d.document_label || "Identity Document",
+        docIcon: <IdCard size={20} />,
+        status: (d.status.charAt(0).toUpperCase() + d.status.slice(1)) as VerificationStatus,
+      }));
+      setHistory(entries);
+    }
+    fetchDocuments();
+  }, []);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/identity-documents", { method: "POST", body: formData });
+      const json = await res.json();
+
+      if (!res.ok) {
+        alert(json.error || "Upload failed");
+        return;
+      }
+
+      // Refresh the history list
+      const newEntry: VerificationEntry = {
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        docType: file.name,
+        docIcon: <IdCard size={20} />,
+        status: "Pending",
+      };
+      setHistory((prev) => [newEntry, ...prev]);
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div style={{ background: S.surface, color: S.onSurface, minHeight: "100vh", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -389,7 +487,7 @@ const IdentityVerification: React.FC = () => {
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>
                   Verified Member
                 </p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}
@@ -469,6 +567,7 @@ const IdentityVerification: React.FC = () => {
             >
               <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
                 <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+                  {/* Document preview */}
                   <div
                     style={{
                       width: "16rem",
@@ -479,47 +578,73 @@ const IdentityVerification: React.FC = () => {
                       position: "relative",
                       border: `1px solid ${S.outlineVariant}26`,
                       flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    <img
-                      alt="Passport thumbnail preview"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzpoDzDEYZVFArX99NpiTRXfw6-id5Ej6sNoYcIwUhj_SWHh8nQORWTeVl9HgetDnhcLlp0g6bry7qfugfXOSMfxdv831iDJlHglQEHE6MBLKGmbaRljXmGjrPmHvzio7CDxqD-AHtKLj2rVCF99iN_qFdaDPQjpAP5DUNQ3hO7vvEDzefd-7gh2NBzCeUddU2UJORD-tJmfxxfPho_keIFO-ncTpqxHbWCe5JomW8AMbVrZB9gROcPEEPueQNEtbGzCI0uK77qIDr"
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background: `${S.primary}33`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        opacity: 0,
-                        transition: "opacity 0.15s",
-                        backdropFilter: "blur(2px)",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-                    >
-                      <button
-                        style={{
-                          background: S.surfaceContainerLowest,
-                          padding: "0.75rem",
-                          borderRadius: "999px",
-                          color: S.primary,
-                          boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-                          border: "none",
-                          cursor: "pointer",
-                          display: "flex",
-                          transition: "transform 0.15s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                    {profileDoc?.url && profileDoc.ext !== "pdf" ? (
+                      <>
+                        <img
+                          alt="ID document preview"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          src={profileDoc.url}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            background: `${S.primary}33`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            opacity: 0,
+                            transition: "opacity 0.15s",
+                            backdropFilter: "blur(2px)",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
+                        >
+                          <a
+                            href={profileDoc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              background: S.surfaceContainerLowest,
+                              padding: "0.75rem",
+                              borderRadius: "999px",
+                              color: S.primary,
+                              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                              display: "flex",
+                              transition: "transform 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                          >
+                            <ZoomIn size={20} />
+                          </a>
+                        </div>
+                      </>
+                    ) : profileDoc?.url && profileDoc.ext === "pdf" ? (
+                      <a
+                        href={profileDoc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: S.primary, textDecoration: "none" }}
                       >
-                        <ZoomIn size={20} />
-                      </button>
-                    </div>
+                        <ShieldCheck size={40} />
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>View PDF</span>
+                      </a>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: S.onSurfaceVariant }}>
+                        <IdCard size={40} />
+                        <span style={{ fontSize: "0.75rem", fontWeight: 500 }}>
+                          {profileDoc ? "Preview unavailable" : "No document"}
+                        </span>
+                      </div>
+                    )}
                   </div>
+
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                     <div>
                       <span
@@ -531,60 +656,50 @@ const IdentityVerification: React.FC = () => {
                           color: S.primary,
                         }}
                       >
-                        Active Document
+                        Signup Document
                       </span>
-                      <h3 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.25rem 0" }}>Biometric Passport</h3>
+                      <h3 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.25rem 0" }}>
+                        Government-Issued ID
+                      </h3>
                       <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", margin: "0.25rem 0" }}>
-                        Issued by National Authority • Valid until Oct 2028
+                        {profileDoc
+                          ? `Submitted for identity verification • ${profileDoc.ext.toUpperCase()}`
+                          : "No document on file"}
                       </p>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "1rem" }}>
-                      <div
-                        style={{
-                          background: S.surface,
-                          padding: "1rem",
-                          borderRadius: "0.75rem",
-                          border: `1px solid ${S.outlineVariant}1a`,
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: "0.625rem",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.12em",
-                            color: S.onSurfaceVariant,
-                            margin: "0 0 0.25rem",
-                          }}
-                        >
+                      <div style={{ background: S.surface, padding: "1rem", borderRadius: "0.75rem", border: `1px solid ${S.outlineVariant}1a` }}>
+                        <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, margin: "0 0 0.25rem" }}>
                           Uploaded On
                         </p>
-                        <p style={{ fontSize: "0.875rem", fontWeight: 600, margin: 0 }}>March 12, 2024</p>
-                      </div>
-                      <div
-                        style={{
-                          background: S.surface,
-                          padding: "1rem",
-                          borderRadius: "0.75rem",
-                          border: `1px solid ${S.outlineVariant}1a`,
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: "0.625rem",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.12em",
-                            color: S.onSurfaceVariant,
-                            margin: "0 0 0.25rem",
-                          }}
-                        >
-                          Verification Level
+                        <p style={{ fontSize: "0.875rem", fontWeight: 600, margin: 0 }}>
+                          {profileDoc?.uploadedAt ?? "—"}
                         </p>
-                        <p style={{ fontSize: "0.875rem", fontWeight: 600, color: S.tertiary, margin: 0 }}>Level 3 (Full)</p>
+                      </div>
+                      <div style={{ background: S.surface, padding: "1rem", borderRadius: "0.75rem", border: `1px solid ${S.outlineVariant}1a` }}>
+                        <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, margin: "0 0 0.25rem" }}>
+                          Verification Status
+                        </p>
+                        <p style={{
+                          fontSize: "0.875rem",
+                          fontWeight: 600,
+                          margin: 0,
+                          color: profileDoc?.status === "Approved" ? "#1b6b2d" : profileDoc?.status === "Rejected" ? S.error : "#775a00",
+                        }}>
+                          {profileDoc?.status ?? "—"}
+                        </p>
                       </div>
                     </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      style={{ display: "none" }}
+                      onChange={handleUpload}
+                    />
                     <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
                       style={{
                         width: "fit-content",
                         padding: "0.875rem 2.5rem",
@@ -594,7 +709,7 @@ const IdentityVerification: React.FC = () => {
                         fontWeight: 700,
                         fontSize: "0.875rem",
                         border: "none",
-                        cursor: "pointer",
+                        cursor: uploading ? "not-allowed" : "pointer",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -602,13 +717,13 @@ const IdentityVerification: React.FC = () => {
                         boxShadow: `0 4px 16px ${S.primary}33`,
                         transition: "transform 0.15s",
                         fontFamily: "Plus Jakarta Sans, sans-serif",
+                        opacity: uploading ? 0.6 : 1,
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
+                      onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.transform = "scale(1.02)"; }}
                       onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                     >
                       <UploadCloud size={18} />
-                      {" "}
-                      Upload New Document
+                      {uploading ? "Uploading…" : "Upload New Document"}
                     </button>
                   </div>
                 </div>
@@ -676,8 +791,14 @@ const IdentityVerification: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {history.map((entry) => (
-                      <VerificationRow key={`${entry.date}-${entry.docType}`} entry={entry} />
+                    {history.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} style={{ padding: "2rem", textAlign: "center", color: S.onSurfaceVariant, fontSize: "0.875rem" }}>
+                          No additional documents uploaded yet
+                        </td>
+                      </tr>
+                    ) : history.map((entry, i) => (
+                      <VerificationRow key={`${entry.date}-${entry.docType}-${i}`} entry={entry} />
                     ))}
                   </tbody>
                 </table>

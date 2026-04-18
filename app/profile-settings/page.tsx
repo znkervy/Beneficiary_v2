@@ -197,6 +197,7 @@ const ProfileSettings: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
   const supabase = createClient();
 
   const [info, setInfo] = useState<PersonalInfo>({
@@ -237,7 +238,7 @@ const ProfileSettings: React.FC = () => {
 
         const { data, error } = await supabase
           .from("beneficiary_profiles")
-          .select("first_name, last_name, email, phone")
+          .select("first_name, last_name, email, phone, created_at")
           .eq("auth_user_id", user.id)
           .single();
 
@@ -250,6 +251,7 @@ const ProfileSettings: React.FC = () => {
             phone: data.phone || "",
             dob: "", // dob not in schema yet
           });
+          if (data.created_at) setActiveSince(new Date(data.created_at).getFullYear());
         }
       } catch (err) {
         console.error("Error:", err);
@@ -484,7 +486,7 @@ const ProfileSettings: React.FC = () => {
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>
                   Verified Member
                 </p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}

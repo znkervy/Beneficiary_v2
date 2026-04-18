@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Landmark, ChevronDown, ShieldCheck } from "lucide-react";
 import { S, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
-import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +39,6 @@ const BANK_OPTIONS: BankOption[] = [
 
 const ConnectBankPage: React.FC = () => {
   const router = useRouter();
-  const supabase = createClient();
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [form, setForm] = useState<BankFormState>({
     bankName: "",
@@ -56,7 +54,6 @@ const ConnectBankPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    // Validate form
     if (!form.bankName || !form.accountHolder || !form.accountNumber) {
       alert("Please fill in all fields");
       return;
@@ -64,41 +61,22 @@ const ConnectBankPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        alert("You must be logged in to add a bank account");
-        router.push("/login");
-        return;
-      }
 
-      // Check if this is the first bank account (make it primary)
-      const { data: existingAccounts } = await supabase
-        .from("bank_accounts")
-        .select("id")
-        .eq("beneficiary_id", user.id);
-
-      const isPrimary = !existingAccounts || existingAccounts.length === 0;
-
-      // Insert bank account
-      const { error } = await supabase
-        .from("bank_accounts")
-        .insert({
-          beneficiary_id: user.id,
+      const res = await fetch("/api/bank-accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           bank_name: form.bankName,
-          account_holder: form.accountHolder,
+          account_holder_name: form.accountHolder,
           account_number: form.accountNumber,
-          is_primary: isPrimary,
-          is_verified: false, // Will be verified later
-        });
+        }),
+      });
 
-      if (error) {
-        console.error("Error adding bank account:", error);
-        alert("Failed to add bank account. Please try again.");
+      const json = await res.json();
+
+      if (!res.ok) {
+        alert(json.error || "Failed to add bank account. Please try again.");
       } else {
-        // Success - redirect to banking details
         router.push("/banking-details");
       }
     } catch (err) {

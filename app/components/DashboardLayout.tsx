@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck, HelpCircle
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 import { usePathname } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,9 +91,25 @@ const NAV_ITEMS = [
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
   const pathname = usePathname();
-  
+
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
+
+  useEffect(() => {
+    const supabase = createClient();
+    async function fetchActiveSince() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("beneficiary_profiles")
+        .select("created_at")
+        .eq("auth_user_id", user.id)
+        .single();
+      if (data?.created_at) setActiveSince(new Date(data.created_at).getFullYear());
+    }
+    fetchActiveSince();
+  }, []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
   return (
@@ -263,7 +280,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </p>
               <div style={{ padding: "1rem", background: S.surfaceContainerLowest, borderRadius: "0.5rem" }}>
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>Verified Member</p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}

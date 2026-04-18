@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck, HelpCircle, ChevronDown, Clock, Info
@@ -19,14 +20,6 @@ interface WithdrawalFormState {
   bank: string;
   notes: string;
 }
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const BANK_OPTIONS: BankOption[] = [
-  { value: "chase", label: "Chase Bank •••• 4219 (Primary)" },
-  { value: "wells", label: "Wells Fargo •••• 9802" },
-  { value: "add", label: "+ Link New Bank Account" },
-];
 
 const GUIDELINES = [
   {
@@ -115,25 +108,100 @@ const SIDEBAR_W_COLLAPSED = 80;
 export default function RequestWithdrawal() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
-  const [form, setForm] = useState<WithdrawalFormState>({
-    amount: "",
-    bank: "chase",
-    notes: "",
-  });
+  const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
+  const [availableBalance, setAvailableBalance] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
+  const [form, setForm] = useState<WithdrawalFormState>({ amount: "", bank: "", notes: "" });
+  const supabase = createClient();
 
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
+  useEffect(() => {
+    async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("beneficiary_profiles")
+        .select("id, bank_name, account_number, account_name, created_at")
+        .eq("auth_user_id", user.id)
+        .single();
+
+      const { data: beneficiary } = await supabase
+        .from("beneficiaries")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single();
+
+      if (!profile || !beneficiary) return;
+      setActiveSince(new Date((profile as any).created_at).getFullYear());
+
+      // Build bank options
+      const opts: BankOption[] = [];
+      if (profile.account_number) {
+        opts.push({ value: "profile", label: `${profile.bank_name || "Bank"} •••• ${String(profile.account_number).slice(-4)} (Initial)` });
+      }
+
+      const { data: additional } = await supabase
+        .from("beneficiary_bank_accounts")
+        .select("id, bank_name, account_number, is_primary")
+        .eq("beneficiary_profile_id", profile.id)
+        .eq("is_active", true);
+
+      (additional ?? []).forEach((a: any) => {
+        opts.push({ value: a.id, label: `${a.bank_name} •••• ${String(a.account_number).slice(-4)}${a.is_primary ? " (Primary)" : ""}` });
+      });
+      setBankOptions(opts);
+      if (opts.length > 0) setForm((f) => ({ ...f, bank: opts[0].value }));
+
+      // Compute available balance
+      const [{ data: txRows }, { data: wdRows }] = await Promise.all([
+        supabase.from("beneficiary_transactions").select("amount").eq("beneficiary_id", beneficiary.id).eq("status", "approved"),
+        supabase.from("beneficiary_withdrawals").select("amount").eq("beneficiary_id", beneficiary.id).eq("status", "approved"),
+      ]);
+      const totalRx = (txRows ?? []).reduce((s: number, r: any) => s + Number(r.amount), 0);
+      const totalWd = (wdRows ?? []).reduce((s: number, r: any) => s + Number(r.amount), 0);
+      setAvailableBalance(Math.max(0, totalRx - totalWd));
+    }
+    fetchData();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setForm((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Withdrawal request:", form);
+    setSubmitError(null);
+
+    const amount = parseFloat(form.amount);
+    if (!amount || amount < 100) { setSubmitError("Minimum withdrawal is ₱100"); return; }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/withdrawals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          bank_account_id: form.bank !== "profile" ? form.bank : null,
+          notes: form.notes || null,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) { setSubmitError(json.error || "Request failed"); return; }
+
+      window.location.href = "/fund-management";
+    } catch (err) {
+      setSubmitError("An error occurred. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -304,7 +372,7 @@ export default function RequestWithdrawal() {
               </p>
               <div style={{ padding: "1rem", background: S.surfaceContainerLowest, borderRadius: "0.5rem" }}>
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>Verified Member</p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}
@@ -421,18 +489,14 @@ export default function RequestWithdrawal() {
                     />
                   </div>
                   <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "space-between", fontSize: "0.75rem" }}>
-                    <span style={{ color: S.onSurfaceVariant }}>Min: ₱100.00</span>
+                    <span style={{ color: S.onSurfaceVariant }}>
+                      Min: ₱100.00 &nbsp;·&nbsp; Available:{" "}
+                      {availableBalance === null ? "…" : `₱${availableBalance.toLocaleString("en-PH")}`}
+                    </span>
                     <button
                       type="button"
-                      style={{
-                        color: S.primary,
-                        fontWeight: 700,
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        fontFamily: "Plus Jakarta Sans, sans-serif",
-                      }}
+                      onClick={() => availableBalance !== null && setForm((f) => ({ ...f, amount: String(availableBalance) }))}
+                      style={{ color: S.primary, fontWeight: 700, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: "Plus Jakarta Sans, sans-serif" }}
                     >
                       Withdraw Max Funds
                     </button>
@@ -483,10 +547,11 @@ export default function RequestWithdrawal() {
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     >
-                      {BANK_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
+                      {bankOptions.length === 0 && (
+                        <option value="" disabled>No bank accounts found</option>
+                      )}
+                      {bankOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
                     <ChevronDown
@@ -549,10 +614,18 @@ export default function RequestWithdrawal() {
                   />
                 </div>
 
+                {/* Error message */}
+                {submitError && (
+                  <div style={{ padding: "0.875rem 1rem", background: `${S.errorContainer}33`, border: `1px solid ${S.error}33`, borderRadius: "0.75rem", color: S.error, fontWeight: 600, fontSize: "0.875rem" }}>
+                    {submitError}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div style={{ display: "flex", gap: "1rem", paddingTop: "1rem" }}>
                   <button
                     type="submit"
+                    disabled={submitting}
                     style={{
                       flex: 1,
                       background: "#F28D83",
@@ -562,15 +635,16 @@ export default function RequestWithdrawal() {
                       borderRadius: "999px",
                       fontSize: "1.125rem",
                       border: "none",
-                      cursor: "pointer",
+                      cursor: submitting ? "not-allowed" : "pointer",
                       boxShadow: "0 4px 16px rgba(242,141,131,0.3)",
-                      transition: "transform 0.15s",
+                      transition: "transform 0.15s, opacity 0.15s",
                       fontFamily: "Plus Jakarta Sans, sans-serif",
+                      opacity: submitting ? 0.6 : 1,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.01)")}
+                    onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.transform = "scale(1.01)"; }}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                   >
-                    Submit Request
+                    {submitting ? "Submitting…" : "Submit Request"}
                   </button>
                   <button
                     type="button"

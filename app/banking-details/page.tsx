@@ -16,9 +16,8 @@ interface BankAccount {
   account_holder: string;
   account_number: string;
   is_primary: boolean;
-  is_verified: boolean;
+  is_profile_account: boolean;
   created_at: string;
-  beneficiary_id: string;
 }
 
 interface BankingEvent {
@@ -28,123 +27,43 @@ interface BankingEvent {
   iconColor: string;
   label: string;
   date: string;
-  status: "Completed" | "Rejected";
+  status: "Completed" | "Pending" | "Failed";
+  details: string | null;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Banking Activity Display Map ─────────────────────────────────────────────
 
-const BANKING_EVENTS: BankingEvent[] = [
-  {
-    id: "1",
-    icon: "🔗",
-    iconBg: "rgba(254,160,150,0.15)",
-    iconColor: "#934841",
-    label: "Chase Bank Linked",
-    date: "Oct 12, 2023",
-    status: "Completed",
-  },
-  {
-    id: "2",
-    icon: "✓",
-    iconBg: "rgba(255,223,152,0.4)",
-    iconColor: "#775a00",
-    label: "Micro-deposit Verification",
-    date: "Oct 10, 2023",
-    status: "Completed",
-  },
-  {
-    id: "3",
-    icon: "!",
-    iconBg: "rgba(255,218,214,0.5)",
-    iconColor: "#ba1a1a",
-    label: "Failed Connection (Wells Fargo)",
-    date: "Sep 28, 2023",
-    status: "Rejected",
-  },
-];
+const EVENT_DISPLAY: Record<string, { icon: string; iconBg: string; iconColor: string; label: string }> = {
+  account_added:        { icon: "🔗", iconBg: "rgba(254,160,150,0.15)", iconColor: "#934841", label: "Bank Account Added" },
+  account_deactivated:  { icon: "✕",  iconBg: "rgba(255,218,214,0.5)",  iconColor: "#ba1a1a", label: "Bank Account Removed" },
+  disbursement_received:{ icon: "↓",  iconBg: "rgba(186,246,196,0.3)",  iconColor: "#1b6b2d", label: "Disbursement Received" },
+  withdrawal_requested: { icon: "↑",  iconBg: "rgba(254,160,150,0.15)", iconColor: "#934841", label: "Withdrawal Requested" },
+  withdrawal_approved:  { icon: "✓",  iconBg: "rgba(255,223,152,0.4)", iconColor: "#775a00", label: "Withdrawal Approved" },
+  withdrawal_rejected:  { icon: "!",  iconBg: "rgba(255,218,214,0.5)",  iconColor: "#ba1a1a", label: "Withdrawal Rejected" },
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const StatusBadge: React.FC<{ status: BankingEvent["status"] }> = ({
-  status,
-}) =>
-  status === "Completed" ? (
-    <span style={{
-      padding: "0.25rem 0.75rem",
-      background: "#f4dddc",
-      color: "#79342e",
-      borderRadius: "999px",
-      fontSize: "0.625rem",
-      fontWeight: 800,
-      textTransform: "uppercase",
-      letterSpacing: "0.05em",
-    }}>
-      Completed
-    </span>
-  ) : (
-    <span style={{
-      padding: "0.25rem 0.75rem",
-      background: "rgba(255,218,214,0.6)",
-      color: "#ba1a1a",
-      borderRadius: "999px",
-      fontSize: "0.625rem",
-      fontWeight: 800,
-      textTransform: "uppercase",
-      letterSpacing: "0.05em",
-    }}>
-      Rejected
-    </span>
-  );
+const StatusBadge: React.FC<{ status: BankingEvent["status"] }> = ({ status }) => {
+  const base: React.CSSProperties = { padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.625rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" };
+  if (status === "Completed") return <span style={{ ...base, background: "#f4dddc", color: "#79342e" }}>Completed</span>;
+  if (status === "Pending")   return <span style={{ ...base, background: "#ffdf98", color: "#4f3b00" }}>Pending</span>;
+  return <span style={{ ...base, background: "rgba(255,218,214,0.6)", color: "#ba1a1a" }}>Failed</span>;
+};
 
 const EventRow: React.FC<{ event: BankingEvent }> = ({ event }) => (
   <tr style={{ borderBottom: `1px solid ${S.outlineVariant}1a` }}>
     <td style={{ padding: "1.5rem 2rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        <div
-          style={{
-            width: "2.5rem",
-            height: "2.5rem",
-            borderRadius: "999px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: event.iconBg,
-            color: event.iconColor,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            fontSize: "1.125rem",
-            fontWeight: 700,
-          }}
-        >
+        <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", background: event.iconBg, color: event.iconColor, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", fontSize: "1.125rem", fontWeight: 700 }}>
           {event.icon}
         </div>
         <span style={{ fontWeight: 700, color: S.onSurface, fontSize: "0.9375rem" }}>{event.label}</span>
       </div>
     </td>
-    <td style={{ padding: "1.5rem 2rem", fontSize: "0.875rem", fontWeight: 500, color: "#554240" }}>
-      {event.date}
-    </td>
-    <td style={{ padding: "1.5rem 2rem" }}>
-      <StatusBadge status={event.status} />
-    </td>
-    <td style={{ padding: "1.5rem 2rem", textAlign: "right" }}>
-      <button 
-        type="button"
-        style={{ 
-          color: "#d4d4d8", 
-          background: "none", 
-          border: "none", 
-          cursor: "pointer", 
-          padding: "0.5rem",
-          borderRadius: "999px",
-          display: "inline-flex",
-          transition: "color 0.15s"
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = S.primary)}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "#d4d4d8")}
-      >
-        <span style={{ fontSize: "1.125rem" }}>ℹ</span>
-      </button>
-    </td>
+    <td style={{ padding: "1.5rem 2rem", fontSize: "0.875rem", fontWeight: 500, color: "#554240" }}>{event.date}</td>
+    <td style={{ padding: "1.5rem 2rem" }}><StatusBadge status={event.status} /></td>
+    <td style={{ padding: "1.5rem 2rem", fontSize: "0.8125rem", color: S.onSurfaceVariant, textAlign: "right" }}>{event.details ?? "—"}</td>
   </tr>
 );
 
@@ -223,89 +142,163 @@ export default function BankingDetailsPage() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [bankingActivity, setBankingActivity] = useState<BankingEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ bank_name: "", account_holder: "", account_number: "" });
+  const [saving, setSaving] = useState(false);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
   const supabase = createClient();
-  
+
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
-  // Fetch bank accounts on mount
   useEffect(() => {
-    fetchBankAccounts();
+    fetchAllData();
   }, []);
 
-  const fetchBankAccounts = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        console.error("No user found");
-        setLoading(false);
-        return;
-      }
+      if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: profile } = await supabase
         .from("beneficiary_profiles")
-        .select("id, bank_name, account_name, account_number, created_at, auth_user_id")
+        .select("id, bank_name, account_name, account_number, created_at")
         .eq("auth_user_id", user.id)
         .single();
 
-      console.log("DEBUG user.id:", user.id);
-      console.log("DEBUG data:", JSON.stringify(data));
-      console.log("DEBUG error:", error?.message, error?.code);
+      if (!profile) return;
+      setActiveSince(new Date(profile.created_at).getFullYear());
 
-      if (error) {
-        console.error("Error fetching bank accounts:", error.message, error.code, error.details);
-      } else if (data && data.account_number) {
-        // Transform the profile data to match the BankAccount interface
-        const bankAccount: BankAccount = {
-          id: data.id,
-          bank_name: data.bank_name || "Bank Account",
-          account_holder: data.account_name || "Account Holder",
-          account_number: data.account_number,
+      const [{ data: additionalAccounts }, { data: activityRows }] = await Promise.all([
+        supabase
+          .from("beneficiary_bank_accounts")
+          .select("id, bank_name, account_holder_name, account_number, is_primary, created_at")
+          .eq("beneficiary_profile_id", profile.id)
+          .eq("is_active", true)
+          .order("created_at"),
+        supabase
+          .from("beneficiary_banking_activity")
+          .select("id, event_type, status, details, event_date")
+          .eq("beneficiary_profile_id", profile.id)
+          .order("event_date", { ascending: false })
+          .limit(20),
+      ]);
+
+      // Build accounts list: initial profile account first, then additional
+      const accounts: BankAccount[] = [];
+      if (profile.account_number) {
+        accounts.push({
+          id: profile.id,
+          bank_name: profile.bank_name || "Bank Account",
+          account_holder: profile.account_name || "Account Holder",
+          account_number: profile.account_number,
           is_primary: true,
-          is_verified: true,
-          created_at: data.created_at,
-          beneficiary_id: data.auth_user_id,
-        };
-        setBankAccounts([bankAccount]);
-      } else {
-        setBankAccounts([]);
+          is_profile_account: true,
+          created_at: profile.created_at ?? new Date().toISOString(),
+        });
       }
+      (additionalAccounts ?? []).forEach((a: any) => {
+        accounts.push({
+          id: a.id,
+          bank_name: a.bank_name,
+          account_holder: a.account_holder_name,
+          account_number: a.account_number,
+          is_primary: a.is_primary,
+          is_profile_account: false,
+          created_at: a.created_at,
+        });
+      });
+      setBankAccounts(accounts);
+
+      // Build banking activity
+      const activity: BankingEvent[] = (activityRows ?? []).map((row: any) => {
+        const display = EVENT_DISPLAY[row.event_type] ?? {
+          icon: "•", iconBg: S.surfaceContainerHigh, iconColor: S.onSurfaceVariant, label: row.event_type,
+        };
+        return {
+          id: row.id,
+          ...display,
+          date: new Date(row.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          status: (row.status === "completed" ? "Completed" : row.status === "pending" ? "Pending" : "Failed") as BankingEvent["status"],
+          details: row.details,
+        };
+      });
+      setBankingActivity(activity);
     } catch (err) {
-      console.error("Error:", err);
+      console.error("Error fetching banking data:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteAccount = async (accountId: string) => {
-    if (!confirm("Are you sure you want to remove your bank details?")) {
-      return;
-    }
+  const handleDeleteAccount = async (account: BankAccount) => {
+    if (!confirm("Are you sure you want to remove this bank account?")) return;
 
     try {
-      const { error } = await supabase
-        .from("beneficiary_profiles")
-        .update({ bank_name: null, account_name: null, account_number: null })
-        .eq("id", accountId);
-
-      if (error) {
-        console.error("Error removing bank details:", error.message);
-        alert("Failed to remove bank details");
+      if (account.is_profile_account) {
+        const { error } = await supabase
+          .from("beneficiary_profiles")
+          .update({ bank_name: null, account_name: null, account_number: null })
+          .eq("id", account.id);
+        if (error) { alert("Failed to remove bank details"); return; }
       } else {
-        fetchBankAccounts();
+        const res = await fetch(`/api/bank-accounts/${account.id}`, { method: "PATCH" });
+        if (!res.ok) { alert("Failed to remove bank account"); return; }
       }
+      fetchAllData();
     } catch (err) {
       console.error("Error:", err);
-      alert("Failed to remove bank details");
+      alert("Failed to remove bank account");
     }
   };
 
   const maskAccountNumber = (accountNumber: string) => {
     if (accountNumber.length <= 4) return accountNumber;
     return "•••• " + accountNumber.slice(-4);
+  };
+
+  const startEdit = (account: BankAccount) => {
+    setEditingId(account.id);
+    setEditForm({
+      bank_name: account.bank_name,
+      account_holder: account.account_holder,
+      account_number: account.account_number,
+    });
+  };
+
+  const cancelEdit = () => setEditingId(null);
+
+  const saveEdit = async (account: BankAccount) => {
+    if (!editForm.bank_name || !editForm.account_holder || !editForm.account_number) {
+      alert("Please fill in all fields");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (account.is_profile_account) {
+        const { error } = await supabase
+          .from("beneficiary_profiles")
+          .update({ bank_name: editForm.bank_name, account_name: editForm.account_holder, account_number: editForm.account_number })
+          .eq("id", account.id);
+        if (error) { alert("Failed to update bank details"); return; }
+      } else {
+        const { error } = await supabase
+          .from("beneficiary_bank_accounts")
+          .update({ bank_name: editForm.bank_name, account_holder_name: editForm.account_holder, account_number: editForm.account_number })
+          .eq("id", account.id);
+        if (error) { alert("Failed to update bank details"); return; }
+      }
+      setEditingId(null);
+      fetchAllData();
+    } catch (err) {
+      console.error("Error:", err);
+      alert("Failed to update bank details");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -481,7 +474,7 @@ export default function BankingDetailsPage() {
               </p>
               <div style={{ padding: "1rem", background: S.surfaceContainerLowest, borderRadius: "0.5rem" }}>
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>Verified Member</p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}
@@ -568,7 +561,7 @@ export default function BankingDetailsPage() {
                   >
                     <div style={{ position: "absolute", right: "-1rem", top: "-1rem", width: "6rem", height: "6rem", background: `${S.primary}05`, borderRadius: "999px" }} />
                     <div style={{ position: "absolute", top: "1.5rem", right: "2rem" }}>
-                      {account.is_verified && (
+                      {account.is_primary && (
                         <span style={{
                           background: "#f4dddc",
                           color: "#79342e",
@@ -583,7 +576,7 @@ export default function BankingDetailsPage() {
                           gap: "0.375rem",
                         }}>
                           <CheckCircle size={14} fill="#79342e" />
-                          Verified
+                          Primary
                         </span>
                       )}
                     </div>
@@ -598,79 +591,173 @@ export default function BankingDetailsPage() {
                         justifyContent: "center",
                         color: S.primary,
                         boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                        flexShrink: 0,
                       }}>
                         <Landmark size={32} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", flex: 1 }}>
-                        <div>
-                          <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: S.onSurface, letterSpacing: "-0.01em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
-                            {account.bank_name}
-                          </h3>
-                          <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", fontWeight: 500 }}>
-                            {account.is_primary ? "Primary Disbursement Account" : "Disbursement Account"}
-                          </p>
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2rem" }}>
-                          <div>
-                            <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
-                              Account Holder
-                            </p>
-                            <p style={{ fontWeight: 700, color: S.onSurface }}>{account.account_holder}</p>
+                        {editingId === account.id ? (
+                          /* ── Edit Mode ── */
+                          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                            {[
+                              { label: "Bank Name",       key: "bank_name",       placeholder: "e.g. Chase Bank" },
+                              { label: "Account Holder",  key: "account_holder",  placeholder: "Full legal name" },
+                              { label: "Account Number",  key: "account_number",  placeholder: "Account number" },
+                            ].map(({ label, key, placeholder }) => (
+                              <div key={key}>
+                                <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.375rem" }}>
+                                  {label}
+                                </p>
+                                <input
+                                  type="text"
+                                  value={editForm[key as keyof typeof editForm]}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
+                                  placeholder={placeholder}
+                                  style={{
+                                    width: "100%",
+                                    height: "2.75rem",
+                                    padding: "0 0.875rem",
+                                    borderRadius: "0.625rem",
+                                    border: `1px solid ${S.outlineVariant}4d`,
+                                    background: S.surfaceContainerLow,
+                                    color: S.onSurface,
+                                    fontWeight: 600,
+                                    fontSize: "0.875rem",
+                                    outline: "none",
+                                    fontFamily: "Plus Jakarta Sans, sans-serif",
+                                    transition: "border-color 0.15s",
+                                    boxSizing: "border-box",
+                                  }}
+                                  onFocus={(e) => { e.currentTarget.style.borderColor = S.primary; e.currentTarget.style.boxShadow = `0 0 0 3px ${S.primaryContainer}33`; }}
+                                  onBlur={(e) => { e.currentTarget.style.borderColor = `${S.outlineVariant}4d`; e.currentTarget.style.boxShadow = "none"; }}
+                                />
+                              </div>
+                            ))}
                           </div>
-                          <div>
-                            <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
-                              Account Number
-                            </p>
-                            <p style={{ fontWeight: 700, color: S.onSurface }}>{maskAccountNumber(account.account_number)}</p>
-                          </div>
-                        </div>
+                        ) : (
+                          /* ── View Mode ── */
+                          <>
+                            <div>
+                              <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: S.onSurface, letterSpacing: "-0.01em", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                                {account.bank_name}
+                              </h3>
+                              <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", fontWeight: 500 }}>
+                                {account.is_primary ? "Primary Disbursement Account" : "Disbursement Account"}
+                              </p>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2rem" }}>
+                              <div>
+                                <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
+                                  Account Holder
+                                </p>
+                                <p style={{ fontWeight: 700, color: S.onSurface }}>{account.account_holder}</p>
+                              </div>
+                              <div>
+                                <p style={{ fontSize: "0.625rem", fontWeight: 800, color: `${S.onSurfaceVariant}80`, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.25rem" }}>
+                                  Account Number
+                                </p>
+                                <p style={{ fontWeight: 700, color: S.onSurface }}>{maskAccountNumber(account.account_number)}</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div style={{ marginTop: "2rem", display: "flex", alignItems: "center", gap: "1.5rem", borderTop: `1px solid ${S.outlineVariant}1a`, paddingTop: "1.5rem" }}>
-                      <button 
-                        type="button"
-                        style={{ 
-                          display: "flex", 
-                          alignItems: "center", 
-                          gap: "0.5rem", 
-                          color: S.primary, 
-                          fontWeight: 700, 
-                          fontSize: "0.8125rem",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          fontFamily: "Plus Jakarta Sans, sans-serif",
-                          transition: "transform 0.15s"
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.transform = "translateX(4px)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.transform = "translateX(0)")}
-                      >
-                        <Edit size={18} />
-                        <span>Edit Details</span>
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => handleDeleteAccount(account.id)}
-                        style={{ 
-                          display: "flex", 
-                          alignItems: "center", 
-                          gap: "0.5rem", 
-                          color: S.error, 
-                          fontWeight: 700, 
-                          fontSize: "0.8125rem",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          marginLeft: "auto",
-                          fontFamily: "Plus Jakarta Sans, sans-serif",
-                          transition: "opacity 0.15s"
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
-                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                      >
-                        <Trash2 size={18} />
-                        <span>Remove</span>
-                      </button>
+                      {editingId === account.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => saveEdit(account)}
+                            disabled={saving}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              color: saving ? S.onSurfaceVariant : S.onPrimaryContainer,
+                              fontWeight: 700,
+                              fontSize: "0.8125rem",
+                              background: saving ? S.surfaceContainerLow : S.primaryContainer,
+                              border: "none",
+                              cursor: saving ? "not-allowed" : "pointer",
+                              padding: "0.5rem 1.25rem",
+                              borderRadius: "999px",
+                              fontFamily: "Plus Jakarta Sans, sans-serif",
+                              transition: "opacity 0.15s",
+                              opacity: saving ? 0.6 : 1,
+                            }}
+                          >
+                            {saving ? "Saving…" : "Save Changes"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            disabled={saving}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              color: S.onSurfaceVariant,
+                              fontWeight: 700,
+                              fontSize: "0.8125rem",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              fontFamily: "Plus Jakarta Sans, sans-serif",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(account)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              color: S.primary,
+                              fontWeight: 700,
+                              fontSize: "0.8125rem",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              fontFamily: "Plus Jakarta Sans, sans-serif",
+                              transition: "transform 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateX(4px)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateX(0)")}
+                          >
+                            <Edit size={18} />
+                            <span>Edit Details</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAccount(account)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              color: S.error,
+                              fontWeight: 700,
+                              fontSize: "0.8125rem",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              marginLeft: "auto",
+                              fontFamily: "Plus Jakarta Sans, sans-serif",
+                              transition: "opacity 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                          >
+                            <Trash2 size={18} />
+                            <span>Remove</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -780,7 +867,9 @@ export default function BankingDetailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {BANKING_EVENTS.map((event) => (
+                    {bankingActivity.length === 0 ? (
+                      <tr><td colSpan={4} style={{ padding: "2rem", textAlign: "center", color: S.onSurfaceVariant, fontSize: "0.875rem" }}>No banking activity yet</td></tr>
+                    ) : bankingActivity.map((event) => (
                       <EventRow key={event.id} event={event} />
                     ))}
                   </tbody>

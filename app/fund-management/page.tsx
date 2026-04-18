@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck, HelpCircle
@@ -13,12 +14,9 @@ interface Transaction {
   id: string;
   date: string;
   campaign: string;
-  icon: string;
-  iconBg: string;
-  iconColor: string;
   refId: string;
   amount: string;
-  status: "Completed" | "Pending";
+  status: "Completed" | "Pending" | "Rejected";
 }
 
 interface Withdrawal {
@@ -26,85 +24,35 @@ interface Withdrawal {
   date: string;
   label: string;
   amount: string;
-  status: "Successful" | "Processing";
+  status: "Successful" | "Processing" | "Failed";
   dotColor: string;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const TRANSACTIONS: Transaction[] = [
-  {
-    id: "1",
-    date: "Oct 24, 2023",
-    campaign: "Higher Ed Scholarship",
-    icon: "school",
-    iconBg: "#f4dddc",
-    iconColor: "#97453e",
-    refId: "TXN-4921-X9",
-    amount: "15,000 PHP",
-    status: "Completed",
-  },
-  {
-    id: "2",
-    date: "Oct 20, 2023",
-    campaign: "Healthcare Grant Q4",
-    icon: "medical_services",
-    iconBg: "rgba(255,223,152,0.3)",
-    iconColor: "#775a00",
-    refId: "TXN-8812-P0",
-    amount: "5,600 PHP",
-    status: "Pending",
-  },
-  {
-    id: "3",
-    date: "Oct 12, 2023",
-    campaign: "Community Aid Fund",
-    icon: "volunteer_activism",
-    iconBg: "#f4dddc",
-    iconColor: "#97453e",
-    refId: "TXN-1129-K1",
-    amount: "24,400 PHP",
-    status: "Completed",
-  },
-];
+function formatCurrency(amount: number | string): string {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+  }).format(Number(amount));
+}
 
-const WITHDRAWALS: Withdrawal[] = [
-  {
-    id: "1",
-    date: "Oct 26, 2023",
-    label: "Bank Transfer to BDO",
-    amount: "12,000 PHP",
-    status: "Successful",
-    dotColor: "#97453e",
-  },
-  {
-    id: "2",
-    date: "Oct 15, 2023",
-    label: "GCash Disbursement",
-    amount: "5,000 PHP",
-    status: "Successful",
-    dotColor: "#97453e",
-  },
-  {
-    id: "3",
-    date: "Oct 02, 2023",
-    label: "ATM Withdrawal",
-    amount: "2,500 PHP",
-    status: "Processing",
-    dotColor: "#cda336",
-  },
-];
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StatusBadge: React.FC<{ status: Transaction["status"] }> = ({ status }) => {
-  const base =
-    "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider";
-  return status === "Completed" ? (
-    <span className={`${base} bg-[#f4dddc] text-[#79342e]`}>Completed</span>
-  ) : (
-    <span className={`${base} bg-[#ffdf98] text-[#4f3b00]`}>Pending</span>
-  );
+  const base = "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider";
+  if (status === "Completed") return <span className={`${base} bg-[#f4dddc] text-[#79342e]`}>Completed</span>;
+  if (status === "Rejected")  return <span className={`${base} bg-[#ffdad6] text-[#ba1a1a]`}>Rejected</span>;
+  return <span className={`${base} bg-[#ffdf98] text-[#4f3b00]`}>Pending</span>;
 };
 
 const TransactionRow: React.FC<{ tx: Transaction }> = ({ tx }) => (
@@ -112,11 +60,8 @@ const TransactionRow: React.FC<{ tx: Transaction }> = ({ tx }) => (
     <td className="px-8 py-6 text-sm font-bold">{tx.date}</td>
     <td className="px-8 py-6">
       <div className="flex items-center gap-3">
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: tx.iconBg, color: tx.iconColor }}
-        >
-          <span className="material-symbols-outlined text-sm">{tx.icon}</span>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[#f4dddc]">
+          <span className="material-symbols-outlined text-sm text-[#97453e]">payments</span>
         </div>
         <span className="text-sm font-medium">{tx.campaign}</span>
       </div>
@@ -208,8 +153,87 @@ const SIDEBAR_W_COLLAPSED = 80;
 const FundManagement: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [totalFundsReceived, setTotalFundsReceived] = useState(0);
+  const [pendingDisbursements, setPendingDisbursements] = useState(0);
+  const [availableForWithdrawal, setAvailableForWithdrawal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
+
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const [{ data: beneficiary }, { data: profile }] = await Promise.all([
+          supabase.from("beneficiaries").select("id").eq("auth_user_id", user.id).single(),
+          supabase.from("beneficiary_profiles").select("created_at").eq("auth_user_id", user.id).single(),
+        ]);
+
+        if (!beneficiary) return;
+        if (profile?.created_at) setActiveSince(new Date(profile.created_at).getFullYear());
+
+        const [{ data: txRows }, { data: wdRows }] = await Promise.all([
+          supabase
+            .from("beneficiary_transactions")
+            .select("id, reference_number, amount, status, created_at, hc_campaigns(title)")
+            .eq("beneficiary_id", beneficiary.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("beneficiary_withdrawals")
+            .select("id, reference_number, amount, status, created_at, beneficiary_bank_accounts(bank_name)")
+            .eq("beneficiary_id", beneficiary.id)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        // Build transactions display
+        const txDisplay: Transaction[] = (txRows ?? []).map((t: any) => ({
+          id: t.id,
+          date: formatDate(t.created_at),
+          campaign: t.hc_campaigns?.title ?? "—",
+          refId: t.reference_number,
+          amount: formatCurrency(t.amount),
+          status: t.status === "approved" ? "Completed" : t.status === "rejected" ? "Rejected" : "Pending",
+        }));
+        setTransactions(txDisplay);
+
+        // Build withdrawals display
+        const wdDisplay: Withdrawal[] = (wdRows ?? []).map((w: any) => ({
+          id: w.id,
+          date: formatDate(w.created_at),
+          label: w.beneficiary_bank_accounts?.bank_name
+            ? `Transfer to ${w.beneficiary_bank_accounts.bank_name}`
+            : `Withdrawal ${w.reference_number}`,
+          amount: formatCurrency(w.amount),
+          status: w.status === "approved" ? "Successful" : w.status === "rejected" ? "Failed" : "Processing",
+          dotColor: w.status === "approved" ? "#97453e" : w.status === "rejected" ? "#ba1a1a" : "#cda336",
+        }));
+        setWithdrawals(wdDisplay);
+
+        // Compute scorecards
+        const approved = (txRows ?? []).filter((t: any) => t.status === "approved");
+        const pending  = (txRows ?? []).filter((t: any) => t.status === "pending");
+        const wdApproved = (wdRows ?? []).filter((w: any) => w.status === "approved");
+
+        const totalRx = approved.reduce((s: number, t: any) => s + Number(t.amount), 0);
+        const totalPending = pending.reduce((s: number, t: any) => s + Number(t.amount), 0);
+        const totalWd = wdApproved.reduce((s: number, w: any) => s + Number(w.amount), 0);
+
+        setTotalFundsReceived(totalRx);
+        setPendingDisbursements(totalPending);
+        setAvailableForWithdrawal(Math.max(0, totalRx - totalWd));
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   return (
     <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -379,7 +403,7 @@ const FundManagement: React.FC = () => {
               </p>
               <div style={{ padding: "1rem", background: S.surfaceContainerLowest, borderRadius: "0.5rem" }}>
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>Verified Member</p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}
@@ -458,7 +482,7 @@ const FundManagement: React.FC = () => {
                   Total Funds Received
                 </p>
                 <h3 className="text-4xl font-extrabold text-[#241918] mt-4 tracking-tight">
-                  45,000{" "}
+                  {loading ? "—" : totalFundsReceived.toLocaleString("en-PH")}{" "}
                   <span className="text-lg font-medium text-[#554240]">PHP</span>
                 </h3>
               </div>
@@ -478,7 +502,7 @@ const FundManagement: React.FC = () => {
                   Pending Disbursements
                 </p>
                 <h3 className="text-4xl font-extrabold text-[#241918] mt-4 tracking-tight">
-                  5,600{" "}
+                  {loading ? "—" : pendingDisbursements.toLocaleString("en-PH")}{" "}
                   <span className="text-lg font-medium text-[#554240]">PHP</span>
                 </h3>
               </div>
@@ -495,7 +519,7 @@ const FundManagement: React.FC = () => {
                   Available for Withdrawal
                 </p>
                 <h3 className="text-4xl font-extrabold mt-4 tracking-tight">
-                  12,300{" "}
+                  {loading ? "—" : availableForWithdrawal.toLocaleString("en-PH")}{" "}
                   <span className="text-lg font-medium opacity-70">PHP</span>
                 </h3>
               </div>
@@ -549,7 +573,11 @@ const FundManagement: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#dac1be]/10">
-                      {TRANSACTIONS.map((tx) => (
+                      {loading ? (
+                        <tr><td colSpan={5} className="px-8 py-6 text-sm text-center text-[#554240]">Loading…</td></tr>
+                      ) : transactions.length === 0 ? (
+                        <tr><td colSpan={5} className="px-8 py-6 text-sm text-center text-[#554240]">No transactions yet</td></tr>
+                      ) : transactions.map((tx) => (
                         <TransactionRow key={tx.id} tx={tx} />
                       ))}
                     </tbody>
@@ -568,7 +596,11 @@ const FundManagement: React.FC = () => {
                   </span>
                 </div>
                 <div className="space-y-8">
-                  {WITHDRAWALS.map((w) => (
+                  {loading ? (
+                    <p className="text-sm text-[#554240]">Loading…</p>
+                  ) : withdrawals.length === 0 ? (
+                    <p className="text-sm text-[#554240]">No withdrawals yet</p>
+                  ) : withdrawals.map((w) => (
                     <WithdrawalItem key={w.id} w={w} />
                   ))}
                 </div>

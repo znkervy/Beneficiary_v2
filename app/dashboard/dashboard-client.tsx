@@ -9,11 +9,24 @@ import {
 } from "lucide-react";
 import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 
+interface RecentTransaction {
+  ref_no: string;
+  date: string;
+  amount: string;
+  status: "Approved" | "Pending" | "Rejected";
+}
+
 interface DashboardClientProps {
   displayName: string;
   totalAmount: string;
   verificationStatus: string;
   logoutAction: () => Promise<void>;
+  lastPaymentDate: string;
+  lastPaymentAmount: string;
+  totalTransfers: number;
+  recentTransactions: RecentTransaction[];
+  activeSince: number | null;
+  hasBankDetails: boolean;
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -106,17 +119,24 @@ const NAV_ITEMS = [
   { icon: <ShieldCheck size={20} />,     label: "Security",  active: false, href: "/security-settings" },
 ];
 
-const TRANSACTIONS: Omit<TransactionRowProps, "actionIcon">[] = [
-  { ref_no: "HPC-2023-092", date: "Oct 12, 2023", amount: "5,600.00 PHP", status: "Approved" },
-  { ref_no: "HPC-2023-104", date: "Oct 28, 2023", amount: "4,200.00 PHP", status: "Pending"  },
-];
 
 const SIDEBAR_W_EXPANDED = 220;
 const SIDEBAR_W_COLLAPSED = 80;
 
-export function DashboardClient({ displayName, totalAmount, verificationStatus, logoutAction }: DashboardClientProps) {
+export function DashboardClient({
+  displayName,
+  totalAmount,
+  verificationStatus,
+  logoutAction,
+  lastPaymentDate,
+  lastPaymentAmount,
+  totalTransfers,
+  recentTransactions,
+  activeSince,
+  hasBankDetails,
+}: DashboardClientProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [toastOpen, setToastOpen] = useState(true);
+  const [toastOpen, setToastOpen] = useState(!hasBankDetails);
   const [search, setSearch] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -287,7 +307,7 @@ export function DashboardClient({ displayName, totalAmount, verificationStatus, 
               </p>
               <div style={{ padding: "1rem", background: S.surfaceContainerLowest, borderRadius: "0.5rem" }}>
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>Verified Member</p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}
@@ -426,10 +446,10 @@ export function DashboardClient({ displayName, totalAmount, verificationStatus, 
                   Last Payment
                 </p>
                 <h3 style={{ fontSize: "2.25rem", color: S.onSurface, fontWeight: 700, margin: "0 0 1.25rem", fontFamily: "Plus Jakarta Sans, sans-serif", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
-                  Oct 12, 2023
+                  {lastPaymentDate}
                 </h3>
                 <p style={{ fontSize: "0.8125rem", color: S.onSurfaceVariant, fontWeight: 500, margin: 0, opacity: 0.7 }}>
-                  Amount: 5,600 PHP
+                  {lastPaymentAmount !== "—" ? `Amount: ${lastPaymentAmount}` : "No payments yet"}
                 </p>
               </div>
 
@@ -439,7 +459,7 @@ export function DashboardClient({ displayName, totalAmount, verificationStatus, 
                   Total Transfers
                 </p>
                 <h3 style={{ fontSize: "3rem", color: S.onSurface, fontWeight: 700, margin: "0 0 1.25rem", fontFamily: "Plus Jakarta Sans, sans-serif", lineHeight: 1, letterSpacing: "-0.02em" }}>
-                  08
+                  {String(totalTransfers).padStart(2, "0")}
                 </h3>
                 <button 
                   type="button"
@@ -531,18 +551,26 @@ export function DashboardClient({ displayName, totalAmount, verificationStatus, 
                     </tr>
                   </thead>
                   <tbody>
-                    {TRANSACTIONS.filter(
-                      (t) =>
-                        !search ||
-                        t.ref_no.toLowerCase().includes(search.toLowerCase()) ||
-                        t.status.toLowerCase().includes(search.toLowerCase())
-                    ).map((t) => (
-                      <TransactionRow
-                        key={t.ref_no}
-                        {...t}
-                        actionIcon={t.status === "Approved" ? <Receipt size={20} /> : <Info size={20} />}
-                      />
-                    ))}
+                    {recentTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: "2rem", textAlign: "center", color: S.onSurfaceVariant, fontSize: "0.875rem" }}>
+                          No transactions yet
+                        </td>
+                      </tr>
+                    ) : recentTransactions
+                      .filter(
+                        (t) =>
+                          !search ||
+                          t.ref_no.toLowerCase().includes(search.toLowerCase()) ||
+                          t.status.toLowerCase().includes(search.toLowerCase()),
+                      )
+                      .map((t) => (
+                        <TransactionRow
+                          key={t.ref_no}
+                          {...t}
+                          actionIcon={t.status === "Approved" ? <Receipt size={20} /> : <Info size={20} />}
+                        />
+                      ))}
                   </tbody>
                 </table>
               </div>

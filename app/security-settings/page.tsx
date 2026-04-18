@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck,
@@ -218,7 +218,22 @@ const SecuritySettings: React.FC = () => {
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState<boolean>(false);
   const [pwLoading, setPwLoading] = useState<boolean>(false);
+  const [activeSince, setActiveSince] = useState<number | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchActiveSince() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("beneficiary_profiles")
+        .select("created_at")
+        .eq("auth_user_id", user.id)
+        .single();
+      if (data?.created_at) setActiveSince(new Date(data.created_at).getFullYear());
+    }
+    fetchActiveSince();
+  }, []);
 
   const logins: LoginEntry[] = [
     { date: "Oct 24, 2023 • 10:24 AM", device: "iPhone 15 Pro", ip: "192.168.1.1", status: "Success" },
@@ -499,7 +514,7 @@ const SecuritySettings: React.FC = () => {
                 <p style={{ fontSize: "0.75rem", fontWeight: 700, color: S.primary, margin: "0 0 0.125rem" }}>
                   Verified Member
                 </p>
-                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since 2023</p>
+                <p style={{ fontSize: "0.625rem", color: S.onSurfaceVariant, margin: 0 }}>Active since {activeSince ?? "…"}</p>
               </div>
             </div>
           )}
