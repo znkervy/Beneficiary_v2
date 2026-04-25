@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck,
   HelpCircle, BadgeCheck, Shield as ShieldIcon, Vibrate, Fingerprint, Calendar,
 } from "lucide-react";
-import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -181,6 +182,7 @@ NavItem.displayName = "NavItem";
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard size={20} />, label: "Overview", active: false, href: "/dashboard" },
+  { icon: <CreditCard size={20} />, label: "Campaigns", active: false, href: "/campaigns" },
   { icon: <CreditCard size={20} />, label: "Funds", active: false, href: "/fund-management" },
   { icon: <Landmark size={20} />, label: "Banking", active: false, href: "/banking-details" },
   { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/identity-verification" },
@@ -320,7 +322,7 @@ const ProfileSettings: React.FC = () => {
             <Menu size={22} />
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <img src={LOGO_SRC} alt="HOPECARD Logo" style={{ height: "2rem", width: "auto", objectFit: "contain" }} />
+            <Image src={LOGO_SRC} alt="HOPECARD Logo" width={LOGO_WIDTH} height={LOGO_HEIGHT} />
             <span style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", color: S.primary }}>
               HOPECARD
             </span>

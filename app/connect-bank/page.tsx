@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Landmark, ChevronDown, ShieldCheck } from "lucide-react";
+import { Landmark, ShieldCheck } from "lucide-react";
 import { S, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -12,28 +12,6 @@ interface BankFormState {
   accountHolder: string;
   accountNumber: string;
 }
-
-interface BankOption {
-  value: string;
-  label: string;
-}
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const BANK_OPTIONS: BankOption[] = [
-  { value: "Chase Bank", label: "Chase Bank" },
-  { value: "Bank of America", label: "Bank of America" },
-  { value: "Wells Fargo", label: "Wells Fargo" },
-  { value: "Citibank", label: "Citibank" },
-  { value: "US Bank", label: "US Bank" },
-  { value: "PNC Bank", label: "PNC Bank" },
-  { value: "Capital One", label: "Capital One" },
-  { value: "TD Bank", label: "TD Bank" },
-  { value: "Horizon Federal Credit Union", label: "Horizon Federal Credit Union" },
-  { value: "Pinnacle Global Banking", label: "Pinnacle Global Banking" },
-  { value: "Sunrise Mutual Trust", label: "Sunrise Mutual Trust" },
-  { value: "Unity Community Bank", label: "Unity Community Bank" },
-];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -207,60 +185,37 @@ const ConnectBankPage: React.FC = () => {
               >
                 Bank Name
               </label>
-              <div style={{ position: "relative" }}>
-                <select
-                  id="bankName"
-                  value={form.bankName}
-                  onChange={handleChange}
-                  style={{
-                    width: "100%",
-                    height: "3.5rem",
-                    paddingLeft: "1rem",
-                    paddingRight: "2.5rem",
-                    borderRadius: "0.75rem",
-                    border: `1px solid ${S.outlineVariant}4d`,
-                    background: `${S.surfaceContainerLow}4d`,
-                    appearance: "none",
-                    color: S.onSurface,
-                    fontWeight: 600,
-                    fontSize: "0.875rem",
-                    outline: "none",
-                    transition: "all 0.15s",
-                    fontFamily: "Plus Jakarta Sans, sans-serif",
-                    cursor: "pointer",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = S.primary;
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${S.primaryContainer}33`;
-                    e.currentTarget.style.background = S.surfaceContainerLow;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = `${S.outlineVariant}4d`;
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.background = `${S.surfaceContainerLow}4d`;
-                  }}
-                >
-                  <option value="" disabled>
-                    Select your financial institution
-                  </option>
-                  {BANK_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={20}
-                  style={{
-                    position: "absolute",
-                    right: "1rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    pointerEvents: "none",
-                    color: S.outline,
-                  }}
-                />
-              </div>
+              <input
+                id="bankName"
+                type="text"
+                value={form.bankName}
+                onChange={handleChange}
+                placeholder="Enter your bank name (e.g. Chase Bank)"
+                style={{
+                  width: "100%",
+                  height: "3.5rem",
+                  padding: "0 1rem",
+                  borderRadius: "0.75rem",
+                  border: `1px solid ${S.outlineVariant}4d`,
+                  background: `${S.surfaceContainerLow}4d`,
+                  color: S.onSurface,
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  outline: "none",
+                  transition: "all 0.15s",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = S.primary;
+                  e.currentTarget.style.boxShadow = `0 0 0 3px ${S.primaryContainer}33`;
+                  e.currentTarget.style.background = S.surfaceContainerLow;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = `${S.outlineVariant}4d`;
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.background = `${S.surfaceContainerLow}4d`;
+                }}
+              />
             </div>
 
             {/* Account Holder */}
