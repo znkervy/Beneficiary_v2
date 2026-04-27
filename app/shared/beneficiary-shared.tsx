@@ -4,6 +4,7 @@
 // Used by: Login, Signup, OTP, Dashboard pages
 
 import React from "react";
+import Image from "next/image";
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
 export const S = {
@@ -39,6 +40,10 @@ export const S = {
 
 export const LOGO_SRC = "/images/logo_h.png";
 
+// Logo dimensions - 2rem height (32px) with proper aspect ratio
+export const LOGO_WIDTH = 80;
+export const LOGO_HEIGHT = 32;
+
 // ─── Shared Global Style ───────────────────────────────────────────────────────
 export const BeneficiaryStyle = () => (
   <style>{`
@@ -57,7 +62,7 @@ export const BeneficiaryStyle = () => (
 // ─── Shared Card Logo Block ────────────────────────────────────────────────────
 export const CardLogo = React.memo(() => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", marginBottom: "2rem" }}>
-    <img src={LOGO_SRC} alt="HOPECARD Logo" style={{ height: "2rem", width: "auto", objectFit: "contain" }} />
+    <Image src={LOGO_SRC} alt="HOPECARD Logo" width={LOGO_WIDTH} height={LOGO_HEIGHT} priority />
     <span style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", color: S.primary }}>HOPECARD</span>
   </div>
 ));
@@ -120,6 +125,8 @@ interface TextInputProps {
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   maxLength?: number;
+  minLength?: number;
+  required?: boolean;
   inputMode?: "text" | "numeric" | "email" | "tel";
   style?: React.CSSProperties;
 }

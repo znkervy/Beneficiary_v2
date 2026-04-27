@@ -1,14 +1,12 @@
 // app/signup/page.tsx
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { User, Landmark, ShieldCheck, CloudUpload, CheckCircle } from "lucide-react";
 import {
   S, BeneficiaryStyle, AmbientCard, CardLogo, FieldLabel,
   TextInput, SelectInput, FormSection, PrimaryBtn, BeneficiaryFooter,
 } from "../shared/beneficiary-shared";
-
-type Campaign = { id: string; title: string };
 
 const FieldGrid = ({ children }: { children: React.ReactNode }) => (
   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1.5rem" }}>
@@ -28,10 +26,6 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted]     = useState(false);
 
-  // Campaigns
-  const [campaigns, setCampaigns]     = useState<Campaign[]>([]);
-  const [campaignId, setCampaignId]   = useState("");
-
   // Form fields
   const [firstName, setFirstName]     = useState("");
   const [lastName, setLastName]       = useState("");
@@ -44,16 +38,6 @@ export default function SignupPage() {
 
   const toTitleCase = (value: string) =>
     value.replace(/\b\w/g, (char) => char.toUpperCase());
-
-  // Fetch active campaigns on mount
-  useEffect(() => {
-    fetch('/api/campaigns')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.campaigns) setCampaigns(data.campaigns);
-      })
-      .catch(() => {/* silently fail — user can still submit without campaign */});
-  }, []);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
@@ -99,7 +83,6 @@ export default function SignupPage() {
       formData.append("accountName", accountName);
       formData.append("bankName", bankName);
       formData.append("accountNumber", accountNumber);
-      if (campaignId) formData.append("campaignId", campaignId);
       formData.append("idFile", idFile);
 
       const res = await fetch("/api/auth/signup", {
@@ -228,18 +211,6 @@ export default function SignupPage() {
                     onChange={(e) => setLastName(toTitleCase(e.target.value))}
                     required
                   />
-                </div>
-                <div>
-                  <FieldLabel>Campaign</FieldLabel>
-                  <SelectInput
-                    value={campaignId}
-                    onChange={(e) => setCampaignId(e.target.value)}
-                  >
-                    <option value="">Select a Campaign</option>
-                    {campaigns.map((c) => (
-                      <option key={c.id} value={c.id}>{c.title}</option>
-                    ))}
-                  </SelectInput>
                 </div>
                 <FullField>
                   <FieldLabel>Email Address</FieldLabel>

@@ -7,14 +7,10 @@ import {
   Landmark, IdCard, User, ShieldCheck, HelpCircle
 } from "lucide-react";
 import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
-import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
+// ─── Nav Item Component ───────────────────────────────────────────────────────
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -24,98 +20,86 @@ interface NavItemProps {
   href: string;
 }
 
-// ─── Nav Item Component ───────────────────────────────────────────────────────
-
-const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => {
-  const paddingValue = collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem";
-  
-  let marginLeftValue: string | number = 0;
-  if (active) {
-    marginLeftValue = "1rem";
-  } else if (collapsed) {
-    marginLeftValue = "0.75rem";
-  }
-  
-  let marginRightValue: string | number = 0;
-  if (!active && collapsed) {
-    marginRightValue = "0.75rem";
-  }
-  
-  return (
-    <a
-      href={href}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.75rem",
-        padding: paddingValue,
-        justifyContent: collapsed ? "center" : "flex-start",
-        borderRadius: active ? "999px 0 0 999px" : "999px",
-        marginLeft: marginLeftValue,
-        marginRight: marginRightValue,
-        background: active ? S.surfaceContainerLowest : "transparent",
-        color: active ? S.primary : "#78716c",
-        fontWeight: active ? 700 : 500,
-        fontSize: "0.875rem",
-        textDecoration: "none",
-        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-        transition: "color 0.15s, background 0.15s, transform 0.15s",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-      }}
-      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
-      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
-    >
-      {icon}
-      {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
-    </a>
-  );
-});
+const NavItem = React.memo<NavItemProps>(({ icon, label, active, collapsed, href }) => (
+  <a
+    href={href}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "0.75rem",
+      padding: collapsed ? "0.75rem" : "0.75rem 1rem 0.75rem 2rem",
+      justifyContent: collapsed ? "center" : "flex-start",
+      borderRadius: active ? "999px 0 0 999px" : "999px",
+      marginLeft: active ? "1rem" : (collapsed ? "0.75rem" : 0),
+      marginRight: active ? 0 : (collapsed ? "0.75rem" : 0),
+      background: active ? S.surfaceContainerLowest : "transparent",
+      color: active ? S.primary : "#78716c",
+      fontWeight: active ? 700 : 500,
+      fontSize: "0.875rem",
+      textDecoration: "none",
+      boxShadow: active ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+      transition: "color 0.15s, background 0.15s, transform 0.15s",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+    }}
+    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = S.primary; e.currentTarget.style.transform = "translateX(4px)"; } }}
+    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.color = "#78716c"; e.currentTarget.style.transform = "translateX(0)"; } }}
+  >
+    {icon}
+    {!collapsed && <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{label}</span>}
+  </a>
+));
 NavItem.displayName = "NavItem";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { icon: <LayoutDashboard size={20} />, label: "Overview", active: false, href: "/dashboard" },
+  { icon: <CreditCard size={20} />, label: "Campaigns", active: true, href: "/campaigns" },
+  { icon: <CreditCard size={20} />, label: "Funds", active: false, href: "/fund-management" },
+  { icon: <Landmark size={20} />, label: "Banking", active: false, href: "/banking-details" },
+  { icon: <IdCard size={20} />, label: "Identity", active: false, href: "/identity-verification" },
+  { icon: <User size={20} />, label: "Profile", active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />, label: "Security", active: false, href: "/security-settings" },
+];
 
 const SIDEBAR_W_EXPANDED = 220;
 const SIDEBAR_W_COLLAPSED = 80;
 
-const NAV_ITEMS = [
-  { icon: <LayoutDashboard size={20} />, label: "Overview", href: "/dashboard" },
-  { icon: <CreditCard size={20} />, label: "Campaigns", href: "/campaigns" },
-  { icon: <CreditCard size={20} />, label: "Funds", href: "/fund-management" },
-  { icon: <Landmark size={20} />, label: "Banking", href: "/banking-details" },
-  { icon: <IdCard size={20} />, label: "Identity", href: "/identity-verification" },
-  { icon: <User size={20} />, label: "Profile", href: "/profile-settings" },
-  { icon: <ShieldCheck size={20} />, label: "Security", href: "/security-settings" },
-];
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-// ─── Main Layout Component ────────────────────────────────────────────────────
-
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+const InvitationAcceptedPage: React.FC = () => {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [activeSince, setActiveSince] = useState<number | null>(null);
-  const pathname = usePathname();
 
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
-
-  useEffect(() => {
-    const supabase = createClient();
-    async function fetchActiveSince() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("beneficiary_profiles")
-        .select("created_at")
-        .eq("auth_user_id", user.id)
-        .single();
-      if (data?.created_at) setActiveSince(new Date(data.created_at).getFullYear());
-    }
-    fetchActiveSince();
-  }, []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
+  const campaignName = "Urban Youth Mentorship";
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from("beneficiary_profiles")
+          .select("created_at")
+          .eq("auth_user_id", user.id)
+          .single();
+
+        if (profile?.created_at) setActiveSince(new Date(profile.created_at).getFullYear());
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+    fetchData();
+  }, []);
+
   return (
-    <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+    <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif", overflow: "hidden" }}>
       <BeneficiaryStyle />
       <style>{`
         .nav-transition { transition: width 0.3s cubic-bezier(0.4,0,0.2,1); }
@@ -247,7 +231,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     >
                       <span style={{ fontSize: "1.25rem" }}>→</span>
                       <span>Log Out</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </>
@@ -287,15 +271,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           )}
 
-          {NAV_ITEMS.map(({ icon, label, href }) => (
-            <NavItem 
-              key={label} 
-              icon={icon} 
-              label={label} 
-              active={pathname === href} 
-              collapsed={collapsed} 
-              href={href} 
-            />
+          {NAV_ITEMS.map(({ icon, label, active, href }) => (
+            <NavItem key={label} icon={icon} label={label} active={active} collapsed={collapsed} href={href} />
           ))}
 
           <div style={{ marginTop: "auto", padding: collapsed ? "0 1rem 2rem" : "0 1.5rem 2rem" }}>
@@ -332,12 +309,67 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           style={{
             flex: 1,
             marginLeft: `${sidebarW}px`,
+            padding: "2rem 3rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             minHeight: "calc(100vh - 5rem)",
           }}
         >
-          {children}
+          {/* Success Card */}
+          <div className="max-w-2xl w-full bg-white rounded-[2rem] p-12 text-center shadow-[0px_12px_32px_rgba(151,69,62,0.06)] border border-[#dac1be]/15 relative overflow-hidden flex flex-col justify-center">
+            {/* Decorative blurs */}
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-[#f28d83]/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-[#97453e]/5 blur-3xl pointer-events-none" />
+
+            <div className="relative z-10">
+              {/* Success visual */}
+              <div className="mb-10 inline-flex items-center justify-center relative">
+                <div className="w-32 h-32 rounded-full bg-[#f28d83] flex items-center justify-center text-[#6e2621] shadow-2xl shadow-[#97453e]/20">
+                  <span
+                    className="material-symbols-outlined text-6xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    check_circle
+                  </span>
+                </div>
+                {/* Floating bubbles */}
+                <div className="absolute -top-2 -right-4 w-6 h-6 rounded-full bg-[#ffdf98] shadow-sm" />
+                <div className="absolute top-1/2 -left-6 w-4 h-4 rounded-full bg-[#fea096] shadow-sm" />
+              </div>
+
+              <h1 className="text-3xl md:text-5xl font-extrabold text-[#241918] mb-6 tracking-tight">
+                Invitation Accepted!
+              </h1>
+
+              <div className="bg-[#fae3e1]/40 rounded-lg p-6 mb-8 max-w-lg mx-auto">
+                <p className="text-lg text-[#554240] font-medium leading-relaxed">
+                  You have successfully joined the{" "}
+                  <span className="text-[#97453e] font-bold">{campaignName}</span> campaign.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button
+                  onClick={() => router.push("/campaigns")}
+                  className="w-full sm:w-auto px-10 py-4 bg-[#f28d83] text-[#6e2621] rounded-[1rem] font-extrabold text-sm hover:opacity-90 transition-all active:scale-95 shadow-md"
+                >
+                  View My Campaigns
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full sm:w-auto px-10 py-4 text-[#97453e] font-extrabold text-sm hover:bg-[#97453e]/5 rounded-[1rem] transition-all active:scale-95"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
         </main>
       </div>
     </div>
   );
-}
+};
+
+export default InvitationAcceptedPage;

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import Image from "next/image";
 import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck,
   HelpCircle, TrendingUp, ArrowRight,
   X, AlertCircle, AlertTriangle, Search, Receipt, Info,
 } from "lucide-react";
-import { S, LOGO_SRC, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 
 interface RecentTransaction {
   ref_no: string;
@@ -111,12 +112,13 @@ TransactionRow.displayName = "TransactionRow";
 
 // ─── Nav Data ──────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { icon: <LayoutDashboard size={20} />, label: "Overview",  active: true, href: "/dashboard"  },
-  { icon: <CreditCard size={20} />,      label: "Funds",     active: false, href: "/fund-management" },
-  { icon: <Landmark size={20} />,        label: "Banking",   active: false, href: "/banking-details" },
-  { icon: <IdCard size={20} />,          label: "Identity",  active: false, href: "/identity-verification" },
-  { icon: <User size={20} />,            label: "Profile",   active: false, href: "/profile-settings" },
-  { icon: <ShieldCheck size={20} />,     label: "Security",  active: false, href: "/security-settings" },
+  { icon: <LayoutDashboard size={20} />, label: "Overview",   active: true,  href: "/dashboard"  },
+  { icon: <CreditCard size={20} />,      label: "Campaigns",  active: false, href: "/campaigns" },
+  { icon: <CreditCard size={20} />,      label: "Funds",      active: false, href: "/fund-management" },
+  { icon: <Landmark size={20} />,        label: "Banking",    active: false, href: "/banking-details" },
+  { icon: <IdCard size={20} />,          label: "Identity",   active: false, href: "/identity-verification" },
+  { icon: <User size={20} />,            label: "Profile",    active: false, href: "/profile-settings" },
+  { icon: <ShieldCheck size={20} />,     label: "Security",   active: false, href: "/security-settings" },
 ];
 
 
@@ -178,7 +180,7 @@ export function DashboardClient({
             <Menu size={22} />
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <img src={LOGO_SRC} alt="HOPECARD Logo" style={{ height: "2rem", width: "auto", objectFit: "contain" }} />
+            <Image src={LOGO_SRC} alt="HOPECARD Logo" width={LOGO_WIDTH} height={LOGO_HEIGHT} />
             <span style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", color: S.primary }}>HOPECARD</span>
           </div>
         </div>
