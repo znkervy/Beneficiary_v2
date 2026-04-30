@@ -6,6 +6,7 @@ import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck, HelpCircle
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 import { createClient } from "@/utils/supabase/client";
 
@@ -13,29 +14,39 @@ import { createClient } from "@/utils/supabase/client";
 
 type DisbursementStatus = "Approved" | "Pending" | "Rejected";
 
-interface Disbursement {
-  id: string;
-  date: string;
-  referenceId: string;
-  status: DisbursementStatus;
-  amount: string;
-}
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const DISBURSEMENTS: Disbursement[] = [
-  { id: "1", date: "Oct 12, 2024", referenceId: "#TXN-9021-X9", status: "Approved", amount: "$2,400.00" },
-  { id: "2", date: "Sep 28, 2024", referenceId: "#TXN-8842-P2", status: "Approved", amount: "$3,150.00" },
-  { id: "3", date: "Sep 15, 2024", referenceId: "#TXN-8711-L4", status: "Pending",  amount: "$1,200.00" },
-  { id: "4", date: "Aug 30, 2024", referenceId: "#TXN-8590-M7", status: "Approved", amount: "$5,000.00" },
-  { id: "5", date: "Aug 12, 2024", referenceId: "#TXN-8423-B1", status: "Rejected", amount: "$2,500.00" },
-];
-
 const STATUS_STYLES: Record<DisbursementStatus, string> = {
   Approved: "bg-[#f4dddc] text-[#79342e]",
   Pending:  "bg-[#ffdf98]/40 text-[#4f3b00]",
   Rejected: "bg-[#ffdad6]/40 text-[#ba1a1a]",
 };
+
+interface CampaignDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  status: string;
+  target_amount: number;
+  collected_amount: number;
+  start_date: string;
+  end_date: string | null;
+}
+
+interface ManagerDetail {
+  full_name: string;
+  organization_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+interface DisbursementRow {
+  id: string;
+  reference_id: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  disbursed_at: string | null;
+  created_at: string;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -104,6 +115,14 @@ const SIDEBAR_W_COLLAPSED = 80;
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const CampaignDetailsPage: React.FC = () => {
+  const params = useParams();
+  const campaignId = params.id as string;
+
+  const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
+  const [manager, setManager] = useState<ManagerDetail | null>(null);
+  const [disbursements, setDisbursements] = useState<DisbursementRow[]>([]);
+  const [totalReceived, setTotalReceived] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [activeSince, setActiveSince] = useState<number | null>(null);
@@ -123,14 +142,28 @@ const CampaignDetailsPage: React.FC = () => {
           .select("created_at")
           .eq("auth_user_id", user.id)
           .single();
-
         if (profile?.created_at) setActiveSince(new Date(profile.created_at).getFullYear());
+
+        const res = await fetch(`/api/campaigns/${campaignId}`);
+        if (res.status === 403 || res.status === 404) {
+          window.location.href = "/campaigns";
+          return;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          setCampaign(data.campaign);
+          setManager(data.manager);
+          setDisbursements(data.disbursements);
+          setTotalReceived(data.total_received);
+        }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching campaign details:", error);
+      } finally {
+        setLoading(false);
       }
     }
     fetchData();
-  }, []);
+  }, [campaignId]);
 
   return (
     <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -355,15 +388,14 @@ const CampaignDetailsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto mb-12 w-full">
             <div className="flex items-center gap-3 mb-4">
               <span className="px-4 py-1.5 bg-[#f4dddc] text-[#79342e] text-[10px] font-extrabold uppercase tracking-widest rounded-full">
-                Active
+                {campaign?.status ?? "…"}
               </span>
-              <span className="text-[#554240] text-sm font-medium">Ref: UYM-2024-008</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#241918] leading-tight mb-4">
-              Urban Youth Mentorship
+              {loading ? "Loading…" : (campaign?.title ?? "Campaign")}
             </h1>
             <p className="text-[#554240] max-w-2xl text-lg leading-relaxed font-medium">
-              Providing professional guidance and resources to inner-city students to foster academic excellence and career readiness.
+              {campaign?.description ?? ""}
             </p>
           </div>
 
@@ -375,15 +407,26 @@ const CampaignDetailsPage: React.FC = () => {
                 Total Received
               </p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold text-[#241918]">$14,250.00</span>
-                <span className="text-[#554240] font-bold text-lg">/ $18k goal</span>
+                <span className="text-5xl font-extrabold text-[#241918]">
+                  ₱{totalReceived.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-[#554240] font-bold text-lg">
+                  / ₱{(campaign?.target_amount ?? 0).toLocaleString("en-PH")} goal
+                </span>
               </div>
-              <div className="mt-8 w-full bg-[#fae3e1] rounded-full h-2 overflow-hidden">
-                <div className="bg-[#f28d83] h-full" style={{ width: "82%" }} />
-              </div>
-              <p className="mt-4 text-[10px] font-extrabold text-[#554240] uppercase tracking-widest">
-                82% of goal reached
-              </p>
+              {campaign && campaign.target_amount > 0 && (
+                <>
+                  <div className="mt-8 w-full bg-[#fae3e1] rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-[#f28d83] h-full"
+                      style={{ width: `${Math.min(100, Math.round((campaign.collected_amount / campaign.target_amount) * 100))}%` }}
+                    />
+                  </div>
+                  <p className="mt-4 text-[10px] font-extrabold text-[#554240] uppercase tracking-widest">
+                    {Math.min(100, Math.round((campaign.collected_amount / campaign.target_amount) * 100))}% of goal reached
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Campaign Manager */}
@@ -392,27 +435,39 @@ const CampaignDetailsPage: React.FC = () => {
                 <h3 className="text-lg font-extrabold text-[#241918] mb-6 uppercase tracking-wider">
                   Campaign Manager
                 </h3>
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-[#fae3e1] border-2 border-[#fff8f7] shadow-sm flex items-center justify-center">
-                    <User size={28} style={{ color: S.primary }} />
-                  </div>
-                  <div>
-                    <p className="font-extrabold text-[#241918]">Marcus Thorne</p>
-                    <p className="text-sm font-bold text-[#f28d83] uppercase tracking-wide">
-                      Lead Coordinator
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-sm text-[#554240] font-medium">
-                    <span className="material-symbols-outlined text-[#f28d83] text-xl">mail</span>
-                    m.thorne@urbanreach.org
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-[#554240] font-medium">
-                    <span className="material-symbols-outlined text-[#f28d83] text-xl">call</span>
-                    +1 (555) 098-4422
-                  </div>
-                </div>
+                {manager ? (
+                  <>
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[#fae3e1] border-2 border-[#fff8f7] shadow-sm flex items-center justify-center">
+                        <User size={28} style={{ color: S.primary }} />
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-[#241918]">{manager.full_name}</p>
+                        <p className="text-sm font-bold text-[#f28d83] uppercase tracking-wide">
+                          {manager.organization_name ?? "Organization"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      {manager.email && (
+                        <div className="flex items-center gap-3 text-sm text-[#554240] font-medium">
+                          <span className="material-symbols-outlined text-[#f28d83] text-xl">mail</span>
+                          {manager.email}
+                        </div>
+                      )}
+                      {manager.phone && (
+                        <div className="flex items-center gap-3 text-sm text-[#554240] font-medium">
+                          <span className="material-symbols-outlined text-[#f28d83] text-xl">call</span>
+                          {manager.phone}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-[#554240]/70 mt-4">
+                    {loading ? "Loading…" : "Manager information unavailable."}
+                  </p>
+                )}
               </div>
               <button className="mt-8 py-3 w-full bg-[#f28d83] text-[#6e2621] rounded-full text-xs font-extrabold uppercase tracking-widest hover:opacity-90 transition-all shadow-sm">
                 Contact Organization
@@ -439,16 +494,36 @@ const CampaignDetailsPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#dac1be]/10">
-                    {DISBURSEMENTS.map((d) => (
-                      <tr key={d.id} className="hover:bg-[#fff0ef]/30 transition-colors">
-                        <td className="px-8 py-6 text-sm font-bold">{d.date}</td>
-                        <td className="px-8 py-6 text-sm font-mono text-[#554240]">{d.referenceId}</td>
-                        <td className="px-8 py-6">
-                          <StatusBadge status={d.status} />
+                    {loading ? (
+                      <tr>
+                        <td colSpan={4} className="px-8 py-12 text-center text-sm text-[#554240]/60 font-medium">
+                          Loading…
                         </td>
-                        <td className="px-8 py-6 text-right font-extrabold text-[#241918]">{d.amount}</td>
                       </tr>
-                    ))}
+                    ) : disbursements.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-8 py-12 text-center text-sm text-[#554240]/60 font-medium">
+                          No disbursements yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      disbursements.map((d) => (
+                        <tr key={d.id} className="hover:bg-[#fff0ef]/30 transition-colors">
+                          <td className="px-8 py-6 text-sm font-bold">
+                            {d.disbursed_at
+                              ? new Date(d.disbursed_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+                              : new Date(d.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                          </td>
+                          <td className="px-8 py-6 text-sm font-mono text-[#554240]">#{d.reference_id}</td>
+                          <td className="px-8 py-6">
+                            <StatusBadge status={d.status as DisbursementStatus} />
+                          </td>
+                          <td className="px-8 py-6 text-right font-extrabold text-[#241918]">
+                            ₱{d.amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
