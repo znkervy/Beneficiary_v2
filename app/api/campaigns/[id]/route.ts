@@ -52,7 +52,11 @@ export async function GET(
       .order("created_at", { ascending: false }),
   ]);
 
-  if (campError || !campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+  if (campError) {
+    console.error("[campaigns/id] hc_campaigns fetch error:", campError.message);
+    return NextResponse.json({ error: "Failed to load campaign details" }, { status: 500 });
+  }
+  if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
   if (disbError) {
     console.error("[campaigns/id] disbursements fetch error:", disbError.message);
     return NextResponse.json({ error: "Failed to load campaign details" }, { status: 500 });
