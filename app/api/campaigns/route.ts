@@ -1,27 +1,87 @@
 // app/api/campaigns/route.ts
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { createClient as createServerClient } from "@/utils/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: profile } = await admin
+    .from("beneficiary_profiles")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .single();
+  if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  const { data: enrollments } = await admin
+    .from("campaign_beneficiaries")
+    .select("campaign_id")
+    .eq("beneficiary_profile_id", profile.id);
+
+  const campaignIds = (enrollments ?? []).map((e: { campaign_id: string }) => e.campaign_id);
+
+  const { count: pendingInvitations } = await admin
+    .from("campaign_invitations")
+    .select("id", { count: "exact", head: true })
+    .eq("beneficiary_profile_id", profile.id)
+    .eq("status", "pending");
+
+  if (campaignIds.length === 0) {
+    return NextResponse.json({
+      campaigns: [],
+      summary: { total_support: 0, active_count: 0, pending_invitations: pendingInvitations ?? 0 },
+    });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const [{ data: campaigns }, { data: disbursements }] = await Promise.all([
+    admin
+      .from("hc_campaigns")
+      .select("id, title, description, category, status, target_amount, collected_amount")
+      .in("id", campaignIds),
+    admin
+      .from("beneficiary_disbursements")
+      .select("campaign_id, amount")
+      .eq("beneficiary_profile_id", profile.id)
+      .eq("status", "approved"),
+  ]);
 
-  const { data, error } = await supabase
-    .from('hc_campaigns')
-    .select('id, title')
-    .eq('status', 'active')
-    .order('title', { ascending: true });
-
-  if (error) {
-    console.error('[campaigns] fetch error:', error.message);
-    return NextResponse.json({ error: 'Failed to load campaigns.' }, { status: 500 });
+  const receivedByCampaign: Record<string, number> = {};
+  let totalSupport = 0;
+  for (const d of disbursements ?? []) {
+    receivedByCampaign[d.campaign_id] = (receivedByCampaign[d.campaign_id] ?? 0) + Number(d.amount);
+    totalSupport += Number(d.amount);
   }
 
-  return NextResponse.json({ campaigns: data ?? [] });
+  const activeCount = (campaigns ?? []).filter((c: { status: string }) => c.status === "active").length;
+
+  return NextResponse.json({
+    campaigns: (campaigns ?? []).map((c: {
+      id: string; title: string; description: string | null;
+      category: string | null; status: string;
+      target_amount: number; collected_amount: number;
+    }) => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      category: c.category,
+      status: c.status,
+      target_amount: Number(c.target_amount),
+      collected_amount: Number(c.collected_amount),
+      total_received: receivedByCampaign[c.id] ?? 0,
+    })),
+    summary: {
+      total_support: totalSupport,
+      active_count: activeCount,
+      pending_invitations: pendingInvitations ?? 0,
+    },
+  });
 }
