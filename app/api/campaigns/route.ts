@@ -15,11 +15,15 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("beneficiary_profiles")
     .select("id")
     .eq("auth_user_id", user.id)
     .single();
+  if (profileError && profileError.code !== "PGRST116") {
+    console.error("[campaigns] profile fetch error:", profileError.message);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
   const { data: enrollments, error: enrollmentsError } = await admin

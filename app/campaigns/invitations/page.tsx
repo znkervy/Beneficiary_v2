@@ -239,6 +239,8 @@ const CampaignInvitationsPage: React.FC = () => {
     const res = await fetch(`/api/campaigns/invitations/${invitationId}/accept`, { method: "POST" });
     if (res.ok) {
       router.push("/campaigns/invitation-accepted");
+    } else {
+      alert("Unable to accept invitation. Please try again.");
     }
   };
 
@@ -246,6 +248,8 @@ const CampaignInvitationsPage: React.FC = () => {
     const res = await fetch(`/api/campaigns/invitations/${invitationId}/decline`, { method: "POST" });
     if (res.ok) {
       setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+    } else {
+      alert("Unable to decline invitation. Please try again.");
     }
   };
 

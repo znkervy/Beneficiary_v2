@@ -20,19 +20,27 @@ export async function GET(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("beneficiary_profiles")
     .select("id")
     .eq("auth_user_id", user.id)
     .single();
+  if (profileError && profileError.code !== "PGRST116") {
+    console.error("[campaigns/id] profile fetch error:", profileError.message);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const { data: enrollment } = await admin
+  const { data: enrollment, error: enrollmentError } = await admin
     .from("campaign_beneficiaries")
     .select("campaign_id")
     .eq("campaign_id", id)
     .eq("beneficiary_profile_id", profile.id)
     .single();
+  if (enrollmentError && enrollmentError.code !== "PGRST116") {
+    console.error("[campaigns/id] enrollment check error:", enrollmentError.message);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
   if (!enrollment) return NextResponse.json({ error: "Not enrolled in this campaign" }, { status: 403 });
 
   const [

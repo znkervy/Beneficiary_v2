@@ -473,7 +473,10 @@ const CampaignDetailsPage: React.FC = () => {
                   </p>
                 )}
               </div>
-              <button className="mt-8 py-3 w-full bg-[#f28d83] text-[#6e2621] rounded-full text-xs font-extrabold uppercase tracking-widest hover:opacity-90 transition-all shadow-sm">
+              <button
+                disabled
+                className="mt-8 py-3 w-full bg-[#f28d83]/50 text-[#6e2621]/60 rounded-full text-xs font-extrabold uppercase tracking-widest cursor-not-allowed shadow-sm"
+              >
                 Contact Organization
               </button>
             </div>

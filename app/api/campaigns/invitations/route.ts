@@ -15,11 +15,15 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("beneficiary_profiles")
     .select("id")
     .eq("auth_user_id", user.id)
     .single();
+  if (profileError && profileError.code !== "PGRST116") {
+    console.error("[invitations] profile fetch error:", profileError.message);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
   const { data: invitations, error } = await admin
@@ -52,18 +56,21 @@ export async function GET() {
 
   const createdBys = [...new Set((campaigns ?? []).map((c: { created_by: string }) => c.created_by))];
 
-  const { data: managers, error: managersError } = await admin
-    .from("campaign_manager_profiles")
-    .select("auth_user_id, organization_name")
-    .in("auth_user_id", createdBys);
-
-  if (managersError) {
-    console.error("[invitations] managers fetch error:", managersError.message);
-    return NextResponse.json({ error: "Failed to load invitations" }, { status: 500 });
+  let managers: { auth_user_id: string; organization_name: string | null }[] = [];
+  if (createdBys.length > 0) {
+    const { data: managersData, error: managersError } = await admin
+      .from("campaign_manager_profiles")
+      .select("auth_user_id, organization_name")
+      .in("auth_user_id", createdBys);
+    if (managersError) {
+      console.error("[invitations] managers fetch error:", managersError.message);
+      return NextResponse.json({ error: "Failed to load invitations" }, { status: 500 });
+    }
+    managers = managersData ?? [];
   }
 
   const campaignMap = new Map((campaigns ?? []).map((c: { id: string; title: string; category: string | null; description: string | null; target_amount: number; created_by: string }) => [c.id, c]));
-  const managerMap = new Map((managers ?? []).map((m: { auth_user_id: string; organization_name: string | null }) => [m.auth_user_id, m]));
+  const managerMap = new Map(managers.map((m: { auth_user_id: string; organization_name: string | null }) => [m.auth_user_id, m]));
 
   return NextResponse.json({
     invitations: invitations.map((inv: { id: string; campaign_id: string; invited_at: string }) => {
