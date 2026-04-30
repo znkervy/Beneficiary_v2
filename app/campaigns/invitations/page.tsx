@@ -14,75 +14,32 @@ import { useRouter } from "next/navigation";
 
 interface Invitation {
   id: string;
-  icon: string;
-  category: string;
+  campaign_id: string;
   title: string;
-  org: string;
-  description: string;
-  amountLabel: string;
-  amount: string;
-  featured?: boolean;
-  featuredAmount?: string;
+  category: string | null;
+  description: string | null;
+  organization_name: string | null;
+  target_amount: number;
+  invited_at: string;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const INVITATIONS: Invitation[] = [
-  {
-    id: "INV-001",
-    icon: "book",
-    category: "Educational Credit",
-    title: "Winter Textbook Drive",
-    org: "City Education Board",
-    description:
-      "Fully funded support for university-level textbooks and academic digital subscriptions for the upcoming winter semester. Includes priority access to the digital library.",
-    amountLabel: "Support",
-    amount: "$450.00",
-    featured: true,
-    featuredAmount: "$450.00 Support",
-  },
-  {
-    id: "INV-002",
-    icon: "energy_savings_leaf",
-    category: "Service Voucher",
-    title: "Community Green Initiative",
-    org: "Urban Ecology Group",
-    description:
-      "Vouchers for local organic grocery cooperatives and community gardening workshops to promote sustainable living.",
-    amountLabel: "Estimated Support",
-    amount: "$120.00",
-  },
-  {
-    id: "INV-003",
-    icon: "home_health",
-    category: "Health Credit",
-    title: "Wellness Connect",
-    org: "Hopewell Health Trust",
-    description: "",
-    amountLabel: "Benefit Amount",
-    amount: "$300.00",
-  },
-  {
-    id: "INV-004",
-    icon: "restaurant",
-    category: "Service Voucher",
-    title: "Nutrition Path",
-    org: "Regional Food Security",
-    description: "",
-    amountLabel: "Support Level",
-    amount: "$250.00",
-  },
-  {
-    id: "INV-005",
-    icon: "electric_bolt",
-    category: "Utility Relief",
-    title: "Energy Stability Fund",
-    org: "Municipal Power & Light",
-    description: "",
-    amountLabel: "Relief Amount",
-    amount: "$500.00",
-  },
-];
+const CATEGORY_ICON: Record<string, string> = {
+  Education: "school",
+  Health: "medical_services",
+  Environment: "eco",
+  Community: "volunteer_activism",
+  Food: "restaurant",
+  Energy: "electric_bolt",
+  Housing: "home",
+  Youth: "child_care",
+  Disaster: "emergency",
+};
+
+function categoryToIcon(category: string | null): string {
+  return (category && CATEGORY_ICON[category]) || "campaign";
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -104,21 +61,22 @@ function FeaturedCard({ invitation, onAccept, onDecline }: InvitationCardProps) 
   return (
     <div className="lg:col-span-8 bg-white rounded-[2rem] p-8 shadow-[0px_12px_32px_rgba(151,69,62,0.06)] border border-[#dac1be]/10 flex flex-col md:flex-row gap-8 relative overflow-hidden group">
       <div className="flex-shrink-0 w-24 h-24 rounded-[1.5rem] bg-[#fae3e1] flex items-center justify-center text-[#97453e] shadow-sm">
-        <span
-          className="material-symbols-outlined text-[3rem]"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
-          {invitation.icon}
+        <span className="material-symbols-outlined text-[3rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
+          {categoryToIcon(invitation.category)}
         </span>
       </div>
       <div className="flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-4">
-          <CategoryBadge label={invitation.category} />
-          <span className="text-[#97453e] font-bold text-lg">{invitation.featuredAmount}</span>
+          <CategoryBadge label={invitation.category ?? "Campaign"} />
+          <span className="text-[#97453e] font-bold text-lg">
+            ₱{invitation.target_amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })} Goal
+          </span>
         </div>
         <h3 className="text-2xl font-extrabold text-[#241918] mb-1">{invitation.title}</h3>
-        <p className="text-[#f28d83] font-bold text-xs mb-4 uppercase tracking-wide">{invitation.org}</p>
-        <p className="text-[#554240] leading-relaxed mb-8 font-medium">{invitation.description}</p>
+        <p className="text-[#f28d83] font-bold text-xs mb-4 uppercase tracking-wide">
+          {invitation.organization_name ?? ""}
+        </p>
+        <p className="text-[#554240] leading-relaxed mb-8 font-medium">{invitation.description ?? ""}</p>
         <div className="mt-auto flex items-center gap-4">
           <button
             onClick={() => onAccept(invitation.id)}
@@ -134,9 +92,6 @@ function FeaturedCard({ invitation, onAccept, onDecline }: InvitationCardProps) 
           </button>
         </div>
       </div>
-      <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-700">
-        <span className="material-symbols-outlined text-[12rem]">school</span>
-      </div>
     </div>
   );
 }
@@ -146,24 +101,25 @@ function StandardCard({ invitation, onAccept, onDecline }: InvitationCardProps) 
     <div className="lg:col-span-4 bg-white rounded-[2rem] p-8 shadow-[0px_12px_32px_rgba(151,69,62,0.06)] border border-[#dac1be]/10 flex flex-col">
       <div className="flex justify-between items-start mb-6">
         <div className="w-14 h-14 bg-[#fae3e1] rounded-[1.25rem] flex items-center justify-center text-[#97453e] shadow-sm">
-          <span
-            className="material-symbols-outlined text-3xl"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            {invitation.icon}
+          <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {categoryToIcon(invitation.category)}
           </span>
         </div>
-        <CategoryBadge label={invitation.category} />
+        <CategoryBadge label={invitation.category ?? "Campaign"} />
       </div>
       <h3 className="text-xl font-bold text-[#241918] mb-1">{invitation.title}</h3>
-      <p className="text-[#f28d83] font-bold text-xs mb-4 uppercase tracking-wide">{invitation.org}</p>
+      <p className="text-[#f28d83] font-bold text-xs mb-4 uppercase tracking-wide">
+        {invitation.organization_name ?? ""}
+      </p>
       {invitation.description && (
         <p className="text-[#554240] text-sm font-medium leading-relaxed mb-6">{invitation.description}</p>
       )}
       <div className="mt-auto space-y-4">
         <div className="flex justify-between text-sm font-medium pt-4 border-t border-[#dac1be]/10">
-          <span className="text-[#554240]/70">{invitation.amountLabel}</span>
-          <span className="font-extrabold text-[#241918]">{invitation.amount}</span>
+          <span className="text-[#554240]/70">Campaign Goal</span>
+          <span className="font-extrabold text-[#241918]">
+            ₱{invitation.target_amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+          </span>
         </div>
         <button
           onClick={() => onAccept(invitation.id)}
@@ -240,24 +196,14 @@ const SIDEBAR_W_COLLAPSED = 80;
 
 const CampaignInvitationsPage: React.FC = () => {
   const router = useRouter();
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
-  const [invitations, setInvitations] = useState<Invitation[]>(INVITATIONS);
   const [activeSince, setActiveSince] = useState<number | null>(null);
 
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
-
-  const handleAccept = (id: string) => {
-    console.log("Accepted:", id);
-    router.push("/campaigns/invitation-accepted");
-  };
-
-  const handleDecline = (id: string) => {
-    setInvitations((prev) => prev.filter((inv) => inv.id !== id));
-  };
-
-  const [featured, ...rest] = invitations;
 
   useEffect(() => {
     async function fetchData() {
@@ -271,14 +217,35 @@ const CampaignInvitationsPage: React.FC = () => {
           .select("created_at")
           .eq("auth_user_id", user.id)
           .single();
-
         if (profile?.created_at) setActiveSince(new Date(profile.created_at).getFullYear());
+
+        const res = await fetch("/api/campaigns/invitations");
+        if (res.ok) {
+          const data = await res.json();
+          setInvitations(data.invitations);
+        }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching invitations:", error);
+      } finally {
+        setLoading(false);
       }
     }
     fetchData();
   }, []);
+
+  const handleAccept = async (invitationId: string) => {
+    const res = await fetch(`/api/campaigns/invitations/${invitationId}/accept`, { method: "POST" });
+    if (res.ok) {
+      router.push("/campaigns/invitation-accepted");
+    }
+  };
+
+  const handleDecline = async (invitationId: string) => {
+    const res = await fetch(`/api/campaigns/invitations/${invitationId}/decline`, { method: "POST" });
+    if (res.ok) {
+      setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+    }
+  };
 
   return (
     <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -511,23 +478,26 @@ const CampaignInvitationsPage: React.FC = () => {
           </header>
 
           {/* Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {featured && (
-              <FeaturedCard
-                invitation={featured}
-                onAccept={handleAccept}
-                onDecline={handleDecline}
-              />
-            )}
-            {rest.map((inv) => (
-              <StandardCard
-                key={inv.id}
-                invitation={inv}
-                onAccept={handleAccept}
-                onDecline={handleDecline}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <p className="text-[#554240] font-medium">Loading invitations…</p>
+            </div>
+          ) : invitations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <span className="material-symbols-outlined text-[4rem] text-[#dac1be]">mail</span>
+              <p className="text-[#554240] font-bold text-lg">No pending invitations</p>
+              <p className="text-[#554240]/70 text-sm">Check back later — campaign managers will notify you when you&apos;ve been invited.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {invitations[0] && (
+                <FeaturedCard invitation={invitations[0]} onAccept={handleAccept} onDecline={handleDecline} />
+              )}
+              {invitations.slice(1).map((inv) => (
+                <StandardCard key={inv.id} invitation={inv} onAccept={handleAccept} onDecline={handleDecline} />
+              ))}
+            </div>
+          )}
 
           <footer className="pt-8 pb-12 text-center text-[#554240]/50 text-[10px] font-bold uppercase tracking-widest">
             © 2024 HOPECARD Beneficiary Portal. Built for community impact.
