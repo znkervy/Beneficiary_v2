@@ -12,9 +12,10 @@ import { S, FieldLabel, TextInput, PrimaryBtn } from "@/app/shared/beneficiary-s
 interface LoginFormProps {
   confirmed?: boolean;
   linkExpired?: boolean;
+  passwordReset?: boolean;
 }
 
-export function LoginForm({ confirmed, linkExpired }: LoginFormProps) {
+export function LoginForm({ confirmed, linkExpired, passwordReset }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -98,6 +99,13 @@ export function LoginForm({ confirmed, linkExpired }: LoginFormProps) {
       {confirmed && !error && (
         <p style={infoBannerStyle}>
           Email confirmed. Enter your credentials to sign in.
+        </p>
+      )}
+
+      {/* Password reset banner */}
+      {passwordReset && !error && (
+        <p style={infoBannerStyle}>
+          Password updated successfully. Please sign in with your new password.
         </p>
       )}
 

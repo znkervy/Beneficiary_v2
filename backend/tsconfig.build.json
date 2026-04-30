@@ -1,5 +1,8 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "preserveWatchOutput": true
+  },
   "exclude": [
     "node_modules",
     "test",

@@ -14,7 +14,10 @@
       "Bash(mkdir -p \"C:\\\\Users\\\\arjel\\\\Downloads\\\\Beneficiary_v2\\\\app\\\\api\\\\campaigns\\\\invitations\\\\[id]\\\\accept\")",
       "Bash(mkdir -p \"C:\\\\Users\\\\arjel\\\\Downloads\\\\Beneficiary_v2\\\\app\\\\api\\\\campaigns\\\\invitations\\\\[id]\\\\decline\")",
       "Bash(git merge-base *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(xargs grep *)",
+      "Bash(npm install *)",
+      "Bash(node *)"
     ]
   }
 }

@@ -1,3 +1,7 @@
+import { resolve } from 'path';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: resolve(__dirname, '../../../.env.local') });
+
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
@@ -16,7 +20,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number(process.env.API_GATEWAY_PORT ?? process.env.PORT ?? 4000);
+  const port = Number(process.env.API_GATEWAY_PORT ?? process.env.PORT ?? 5000);
   await app.listen(port);
 
   Logger.log(

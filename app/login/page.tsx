@@ -3,7 +3,7 @@ import { LoginForm } from "@/app/login/login-form";
 import { BeneficiaryStyle, BeneficiaryFooter, AmbientCard, CardLogo } from "@/app/shared/beneficiary-shared";
 
 interface LoginPageProps {
-  searchParams: Promise<{ confirmed?: string; error?: string }>;
+  searchParams: Promise<{ confirmed?: string; error?: string; reset?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -37,7 +37,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           </div>
 
-          <LoginForm confirmed={params.confirmed === 'true'} linkExpired={params.error === 'expired'} />
+          <LoginForm confirmed={params.confirmed === 'true'} linkExpired={params.error === 'expired'} passwordReset={params.reset === 'true'} />
 
           {/* Bottom link */}
           <div style={{ marginTop: "2.5rem", paddingTop: "2rem", width: "100%", textAlign: "center", borderTop: "1px solid #dac1be1a" }}>
