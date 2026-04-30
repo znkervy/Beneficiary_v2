@@ -76,7 +76,9 @@ function FeaturedCard({ invitation, onAccept, onDecline }: InvitationCardProps) 
         <p className="text-[#f28d83] font-bold text-xs mb-4 uppercase tracking-wide">
           {invitation.organization_name ?? ""}
         </p>
-        <p className="text-[#554240] leading-relaxed mb-8 font-medium">{invitation.description ?? ""}</p>
+        {invitation.description && (
+          <p className="text-[#554240] leading-relaxed mb-8 font-medium">{invitation.description}</p>
+        )}
         <div className="mt-auto flex items-center gap-4">
           <button
             onClick={() => onAccept(invitation.id)}
@@ -222,7 +224,7 @@ const CampaignInvitationsPage: React.FC = () => {
         const res = await fetch("/api/campaigns/invitations");
         if (res.ok) {
           const data = await res.json();
-          setInvitations(data.invitations);
+          setInvitations(Array.isArray(data.invitations) ? data.invitations : []);
         }
       } catch (error) {
         console.error("Error fetching invitations:", error);
