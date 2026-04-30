@@ -11,101 +11,80 @@ import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Campaign {
+interface CampaignRow {
   id: string;
-  icon: string;
   title: string;
-  description: string;
-  totalReceived: string;
-  status: "Active" | "Completed";
-  size: "large" | "small";
+  description: string | null;
+  category: string | null;
+  status: string;
+  target_amount: number;
+  collected_amount: number;
+  total_received: number;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+interface CampaignSummary {
+  total_support: number;
+  active_count: number;
+  pending_invitations: number;
+}
 
-const FEATURED_CAMPAIGNS: Campaign[] = [
-  {
-    id: "UYM-001",
-    icon: "volunteer_activism",
-    title: "Urban Youth Mentorship",
-    description:
-      "Providing educational resources and weekly mentorship sessions for city students.",
-    totalReceived: "$4,200.00",
-    status: "Active",
-    size: "large",
-  },
-  {
-    id: "CGS-002",
-    icon: "eco",
-    title: "Community Green Space",
-    description:
-      "Revitalizing local parks and creating sustainable community gardens in the East district.",
-    totalReceived: "$2,850.00",
-    status: "Active",
-    size: "large",
-  },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const SECONDARY_CAMPAIGNS: Campaign[] = [
-  {
-    id: "HAF-003",
-    icon: "medical_services",
-    title: "Health Accessibility Fund",
-    description: "",
-    totalReceived: "$5,400.00",
-    status: "Active",
-    size: "small",
-  },
-  {
-    id: "WTD-004",
-    icon: "school",
-    title: "Winter Textbook Drive",
-    description: "",
-    totalReceived: "$1,200.00",
-    status: "Completed",
-    size: "small",
-  },
-];
+const CATEGORY_ICON: Record<string, string> = {
+  Education: "school",
+  Health: "medical_services",
+  Environment: "eco",
+  Community: "volunteer_activism",
+  Food: "restaurant",
+  Energy: "electric_bolt",
+  Housing: "home",
+  Youth: "child_care",
+  Disaster: "emergency",
+};
+
+function categoryToIcon(category: string | null): string {
+  return (category && CATEGORY_ICON[category]) || "campaign";
+}
+
+function formatAmount(amount: number): string {
+  return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function BenefitBloom() {
+function BenefitBloom({ pct }: { pct: number }) {
   return (
     <div
       className="w-20 h-20 flex items-center justify-center relative shadow-sm"
       style={{
-        background: "conic-gradient(from 0deg, #97453e 0%, #f28d83 82%, transparent 82%)",
+        background: `conic-gradient(from 0deg, #97453e 0%, #f28d83 ${pct}%, transparent ${pct}%)`,
         borderRadius: "50%",
       }}
     >
       <div className="absolute inset-1.5 bg-[#fae3e1] rounded-full flex items-center justify-center">
-        <span className="text-sm font-bold text-[#97453e]">82%</span>
+        <span className="text-sm font-bold text-[#97453e]">{pct}%</span>
       </div>
     </div>
   );
 }
 
-interface LargeCampaignCardProps {
-  campaign: Campaign;
-}
-
-function LargeCampaignCard({ campaign }: LargeCampaignCardProps) {
+function LargeCampaignCard({ campaign }: { campaign: CampaignRow }) {
   return (
     <div className="bg-white rounded-[2rem] p-8 shadow-[0px_12px_32px_rgba(151,69,62,0.06)] border border-[#dac1be]/10">
       <div className="flex justify-between items-start mb-6">
         <div className="w-14 h-14 bg-[#fae3e1] rounded-[1.25rem] flex items-center justify-center text-[#97453e] shadow-sm">
-          <span className="material-symbols-outlined text-3xl">{campaign.icon}</span>
+          <span className="material-symbols-outlined text-3xl">{categoryToIcon(campaign.category)}</span>
         </div>
         <span className="px-4 py-1.5 rounded-full bg-[#f4dddc] text-[#79342e] text-[10px] font-extrabold uppercase tracking-widest">
           {campaign.status}
         </span>
       </div>
       <h4 className="text-xl font-bold text-[#241918] mb-2">{campaign.title}</h4>
-      <p className="text-sm text-[#554240] mb-8 line-clamp-2 font-medium">{campaign.description}</p>
+      <p className="text-sm text-[#554240] mb-8 line-clamp-2 font-medium">{campaign.description ?? ""}</p>
       <div className="space-y-4">
         <div className="flex justify-between text-sm font-medium pt-4 border-t border-[#dac1be]/10">
           <span className="text-[#554240]/70">Total Received</span>
-          <span className="font-extrabold text-[#241918]">{campaign.totalReceived}</span>
+          <span className="font-extrabold text-[#241918]">{formatAmount(campaign.total_received)}</span>
         </div>
         <a href={`/campaigns/${campaign.id}`} className="w-full py-3 bg-[#f28d83] text-[#6e2621] rounded-[1rem] font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
           View Details
@@ -116,47 +95,25 @@ function LargeCampaignCard({ campaign }: LargeCampaignCardProps) {
   );
 }
 
-interface SmallCampaignCardProps {
-  campaign: Campaign;
-}
-
-function SmallCampaignCard({ campaign }: SmallCampaignCardProps) {
-  const isCompleted = campaign.status === "Completed";
+function SmallCampaignCard({ campaign }: { campaign: CampaignRow }) {
+  const isInactive = campaign.status !== "active";
   return (
-    <div
-      className={[
-        "bg-white rounded-[2rem] p-8 border border-[#dac1be]/10 shadow-sm",
-        isCompleted ? "opacity-90 grayscale-[0.2]" : "",
-      ].join(" ")}
-    >
+    <div className={["bg-white rounded-[2rem] p-8 border border-[#dac1be]/10 shadow-sm", isInactive ? "opacity-90 grayscale-[0.2]" : ""].join(" ")}>
       <div className="flex justify-between items-start mb-6">
-        <div
-          className={[
-            "w-12 h-12 bg-[#fae3e1] rounded-lg flex items-center justify-center text-[#97453e]",
-            isCompleted ? "opacity-60" : "",
-          ].join(" ")}
-        >
-          <span className="material-symbols-outlined">{campaign.icon}</span>
+        <div className={["w-12 h-12 bg-[#fae3e1] rounded-lg flex items-center justify-center text-[#97453e]", isInactive ? "opacity-60" : ""].join(" ")}>
+          <span className="material-symbols-outlined">{categoryToIcon(campaign.category)}</span>
         </div>
-        <span
-          className={[
-            "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest",
-            isCompleted
-              ? "bg-[#ffe9e7] text-[#554240]"
-              : "bg-[#f4dddc] text-[#79342e]",
-          ].join(" ")}
-        >
+        <span className={["px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest", isInactive ? "bg-[#ffe9e7] text-[#554240]" : "bg-[#f4dddc] text-[#79342e]"].join(" ")}>
           {campaign.status}
         </span>
       </div>
       <h4 className="text-xl font-bold text-[#241918] mb-2">{campaign.title}</h4>
       <div className="flex justify-between items-center mt-8 pb-4 border-b border-[#dac1be]/10">
         <span className="text-xs font-bold text-[#554240]/70">Total Received</span>
-        <span className="font-extrabold text-[#241918]">{campaign.totalReceived}</span>
+        <span className="font-extrabold text-[#241918]">{formatAmount(campaign.total_received)}</span>
       </div>
       <a href={`/campaigns/${campaign.id}`} className="mt-6 text-[#97453e] font-extrabold text-xs inline-flex items-center gap-2 hover:underline">
-        View Details{" "}
-        <span className="material-symbols-outlined text-xs">open_in_new</span>
+        View Details <span className="material-symbols-outlined text-xs">open_in_new</span>
       </a>
     </div>
   );
@@ -219,6 +176,9 @@ const SIDEBAR_W_COLLAPSED = 80;
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const CampaignsPage: React.FC = () => {
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [summary, setSummary] = useState<CampaignSummary>({ total_support: 0, active_count: 0, pending_invitations: 0 });
+  const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [activeSince, setActiveSince] = useState<number | null>(null);
@@ -238,14 +198,27 @@ const CampaignsPage: React.FC = () => {
           .select("created_at")
           .eq("auth_user_id", user.id)
           .single();
-
         if (profile?.created_at) setActiveSince(new Date(profile.created_at).getFullYear());
+
+        const res = await fetch("/api/campaigns");
+        if (res.ok) {
+          const data = await res.json();
+          setCampaigns(data.campaigns);
+          setSummary(data.summary);
+        }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching campaigns:", error);
+      } finally {
+        setLoading(false);
       }
     }
     fetchData();
   }, []);
+
+  const activeCampaigns = campaigns.filter(c => c.status === "active");
+  const sumCollected = activeCampaigns.reduce((s, c) => s + c.collected_amount, 0);
+  const sumTarget = activeCampaigns.reduce((s, c) => s + c.target_amount, 0);
+  const progressPct = sumTarget > 0 ? Math.round((sumCollected / sumTarget) * 100) : 0;
 
   return (
     <div style={{ background: S.surface, minHeight: "100vh", color: S.onSurface, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -477,9 +450,11 @@ const CampaignsPage: React.FC = () => {
             </div>
             <a href="/campaigns/invitations" className="bg-[#D1736A] text-white px-8 py-4 rounded-[1rem] font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
               <span>View Invitations</span>
-              <div className="flex items-center justify-center bg-white w-5 h-5 rounded-full text-[10px] text-[#D1736A]">
-                3
-              </div>
+              {summary.pending_invitations > 0 && (
+                <div className="flex items-center justify-center bg-white w-5 h-5 rounded-full text-[10px] text-[#D1736A] font-bold">
+                  {summary.pending_invitations}
+                </div>
+              )}
             </a>
           </div>
 
@@ -492,46 +467,48 @@ const CampaignsPage: React.FC = () => {
                   Impact Overview
                 </span>
                 <h3 className="text-2xl font-bold text-[#241918] mt-4 mb-2">Total Support</h3>
-                <p className="text-4xl font-black text-[#97453e]">$12,450.00</p>
+                <p className="text-4xl font-black text-[#97453e]">
+                  {loading ? "…" : formatAmount(summary.total_support)}
+                </p>
               </div>
               <div className="mt-12 flex items-center gap-6">
-                <BenefitBloom />
+                <BenefitBloom pct={progressPct} />
                 <div className="flex-1">
                   <p className="text-sm font-bold text-[#241918]">Active Campaign Progress</p>
-                  <p className="text-xs text-[#554240] mt-1 font-medium">Across 4 active programs</p>
+                  <p className="text-xs text-[#554240] mt-1 font-medium">
+                    Across {summary.active_count} active program{summary.active_count !== 1 ? "s" : ""}
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Large Cards */}
             <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-              {FEATURED_CAMPAIGNS.map((c) => (
-                <LargeCampaignCard key={c.id} campaign={c} />
-              ))}
-            </div>
-
-            {/* Bottom Row */}
-            <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-              {SECONDARY_CAMPAIGNS.map((c) => (
-                <SmallCampaignCard key={c.id} campaign={c} />
-              ))}
-
-              {/* CTA Card */}
-              <div className="bg-[#97453e] rounded-[2rem] p-8 text-white flex flex-col justify-center items-center text-center shadow-lg">
-                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4">
-                  <span
-                    className="material-symbols-outlined text-4xl"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    add_circle
-                  </span>
+              {loading ? (
+                <div className="col-span-2 flex items-center justify-center py-24">
+                  <p className="text-[#554240] font-medium">Loading campaigns…</p>
                 </div>
-                <h4 className="text-xl font-bold mb-2">Join a New Cause</h4>
-                <p className="text-xs opacity-80 mb-6 font-medium">
-                  There are 12 new campaigns matching your profile interests.
-                </p>
-              </div>
+              ) : campaigns.length === 0 ? (
+                <div className="col-span-2 flex flex-col items-center justify-center py-24 gap-4">
+                  <span className="material-symbols-outlined text-[4rem] text-[#dac1be]">campaign</span>
+                  <p className="text-[#554240] font-bold text-lg">No campaigns yet</p>
+                  <p className="text-[#554240]/70 text-sm">Accept an invitation to start receiving support.</p>
+                </div>
+              ) : (
+                campaigns.slice(0, 2).map((c) => (
+                  <LargeCampaignCard key={c.id} campaign={c} />
+                ))
+              )}
             </div>
+
+            {/* Bottom Row — remaining campaigns */}
+            {!loading && campaigns.length > 2 && (
+              <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+                {campaigns.slice(2).map((c) => (
+                  <SmallCampaignCard key={c.id} campaign={c} />
+                ))}
+              </div>
+            )}
           </div>
 
           <footer className="pt-8 pb-12 text-center text-[#554240]/50 text-[10px] font-bold uppercase tracking-widest">
