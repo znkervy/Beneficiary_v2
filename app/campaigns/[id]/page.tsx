@@ -12,12 +12,12 @@ import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type DisbursementStatus = "Approved" | "Pending" | "Rejected";
+type DisbursementStatus = "approved" | "pending" | "rejected";
 
 const STATUS_STYLES: Record<DisbursementStatus, string> = {
-  Approved: "bg-[#f4dddc] text-[#79342e]",
-  Pending:  "bg-[#ffdf98]/40 text-[#4f3b00]",
-  Rejected: "bg-[#ffdad6]/40 text-[#ba1a1a]",
+  approved: "bg-[#f4dddc] text-[#79342e]",
+  pending:  "bg-[#ffdf98]/40 text-[#4f3b00]",
+  rejected: "bg-[#ffdad6]/40 text-[#ba1a1a]",
 };
 
 interface CampaignDetail {
@@ -53,7 +53,7 @@ interface DisbursementRow {
 function StatusBadge({ status }: { status: DisbursementStatus }) {
   return (
     <span className={`px-4 py-1 text-[10px] font-extrabold uppercase tracking-widest rounded-full ${STATUS_STYLES[status]}`}>
-      {status}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
@@ -411,20 +411,24 @@ const CampaignDetailsPage: React.FC = () => {
                   ₱{totalReceived.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                 </span>
                 <span className="text-[#554240] font-bold text-lg">
-                  / ₱{(campaign?.target_amount ?? 0).toLocaleString("en-PH")} goal
+                  / ₱{(campaign?.target_amount ?? 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })} goal
                 </span>
               </div>
               {campaign && campaign.target_amount > 0 && (
                 <>
-                  <div className="mt-8 w-full bg-[#fae3e1] rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-[#f28d83] h-full"
-                      style={{ width: `${Math.min(100, Math.round((campaign.collected_amount / campaign.target_amount) * 100))}%` }}
-                    />
-                  </div>
-                  <p className="mt-4 text-[10px] font-extrabold text-[#554240] uppercase tracking-widest">
-                    {Math.min(100, Math.round((campaign.collected_amount / campaign.target_amount) * 100))}% of goal reached
-                  </p>
+                  {(() => {
+                    const pct = Math.min(100, Math.round((campaign.collected_amount / campaign.target_amount) * 100));
+                    return (
+                      <>
+                        <div className="mt-8 w-full bg-[#fae3e1] rounded-full h-2 overflow-hidden">
+                          <div className="bg-[#f28d83] h-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="mt-4 text-[10px] font-extrabold text-[#554240] uppercase tracking-widest">
+                          {pct}% of goal reached
+                        </p>
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
