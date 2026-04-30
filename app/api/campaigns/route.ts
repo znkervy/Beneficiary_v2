@@ -22,10 +22,14 @@ export async function GET() {
     .single();
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const { data: enrollments } = await admin
+  const { data: enrollments, error: enrollmentsError } = await admin
     .from("campaign_beneficiaries")
     .select("campaign_id")
     .eq("beneficiary_profile_id", profile.id);
+  if (enrollmentsError) {
+    console.error("[campaigns] enrollments fetch error:", enrollmentsError.message);
+    return NextResponse.json({ error: "Failed to load campaigns" }, { status: 500 });
+  }
 
   const campaignIds = (enrollments ?? []).map((e: { campaign_id: string }) => e.campaign_id);
 
@@ -42,7 +46,10 @@ export async function GET() {
     });
   }
 
-  const [{ data: campaigns }, { data: disbursements }] = await Promise.all([
+  const [
+    { data: campaigns, error: campaignsError },
+    { data: disbursements, error: disbursementsError },
+  ] = await Promise.all([
     admin
       .from("hc_campaigns")
       .select("id, title, description, category, status, target_amount, collected_amount")
@@ -53,6 +60,14 @@ export async function GET() {
       .eq("beneficiary_profile_id", profile.id)
       .eq("status", "approved"),
   ]);
+  if (campaignsError) {
+    console.error("[campaigns] hc_campaigns fetch error:", campaignsError.message);
+    return NextResponse.json({ error: "Failed to load campaigns" }, { status: 500 });
+  }
+  if (disbursementsError) {
+    console.error("[campaigns] disbursements fetch error:", disbursementsError.message);
+    return NextResponse.json({ error: "Failed to load campaigns" }, { status: 500 });
+  }
 
   const receivedByCampaign: Record<string, number> = {};
   let totalSupport = 0;
