@@ -22,10 +22,13 @@ interface VerificationEntry {
 }
 
 interface ProfileDoc {
+  id?: string;
   url: string | null;
   ext: string;
   status: VerificationStatus;
   uploadedAt: string;
+  label: string;
+  isSignupDoc?: boolean;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -181,7 +184,7 @@ const IdentityVerification: React.FC = () => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [history, setHistory] = useState<VerificationEntry[]>([]);
-  const [profileDoc, setProfileDoc] = useState<ProfileDoc | null>(null);
+  const [allDocuments, setAllDocuments] = useState<ProfileDoc[]>([]);
   const [activeSince, setActiveSince] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,11 +206,13 @@ const IdentityVerification: React.FC = () => {
       if (!profile) return;
       setActiveSince(new Date(profile.created_at).getFullYear());
 
+      const documents: ProfileDoc[] = [];
+
       // Fetch additional docs and signup doc URL in parallel
       const [{ data: docs }, signedUrlRes] = await Promise.all([
         supabase
           .from("beneficiary_identity_documents")
-          .select("id, document_label, status, submitted_at")
+          .select("id, document_label, document_key, status, submitted_at")
           .eq("beneficiary_profile_id", profile.id)
           .order("submitted_at", { ascending: false }),
         profile.id_verification_key
@@ -215,7 +220,7 @@ const IdentityVerification: React.FC = () => {
           : Promise.resolve(null),
       ]);
 
-      // Build active document card state from profile
+      // Add signup document as first card
       if (profile.id_verification_key) {
         const ext = profile.id_verification_key.split(".").pop()?.toLowerCase() ?? "";
         const profileStatus: VerificationStatus =
@@ -225,15 +230,50 @@ const IdentityVerification: React.FC = () => {
           const json = await signedUrlRes.json();
           signedUrl = json.url ?? null;
         }
-        setProfileDoc({
+        documents.push({
           url: signedUrl,
           ext,
           status: profileStatus,
           uploadedAt: new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+          label: "Government-Issued ID",
+          isSignupDoc: true,
         });
       }
 
-      // Build history: additional uploaded docs
+      // Add additional uploaded documents as cards
+      if (docs && docs.length > 0) {
+        const additionalDocs = await Promise.all(
+          docs.map(async (d: any) => {
+            const ext = d.document_key?.split(".").pop()?.toLowerCase() ?? "";
+            const docStatus: VerificationStatus =
+              d.status === "approved" ? "Approved" : d.status === "rejected" ? "Rejected" : "Pending";
+            
+            let signedUrl: string | null = null;
+            if (d.document_key) {
+              const res = await fetch(`/api/identity-documents/signed-url?key=${encodeURIComponent(d.document_key)}`);
+              if (res.ok) {
+                const json = await res.json();
+                signedUrl = json.url ?? null;
+              }
+            }
+
+            return {
+              id: d.id,
+              url: signedUrl,
+              ext,
+              status: docStatus,
+              uploadedAt: new Date(d.submitted_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+              label: d.document_label || "Identity Document",
+              isSignupDoc: false,
+            };
+          })
+        );
+        documents.push(...additionalDocs);
+      }
+
+      setAllDocuments(documents);
+
+      // Build history for the table (keep existing functionality)
       const entries: VerificationEntry[] = (docs ?? []).map((d: any) => ({
         date: new Date(d.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         docType: d.document_label || "Identity Document",
@@ -262,10 +302,34 @@ const IdentityVerification: React.FC = () => {
         return;
       }
 
-      // Refresh the history list
+      // Fetch the signed URL for the newly uploaded document
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      let signedUrl: string | null = null;
+      
+      if (json.documentKey) {
+        const urlRes = await fetch(`/api/identity-documents/signed-url?key=${encodeURIComponent(json.documentKey)}`);
+        if (urlRes.ok) {
+          const urlJson = await urlRes.json();
+          signedUrl = urlJson.url ?? null;
+        }
+      }
+
+      // Add new document to the cards display with preview
+      const newDoc: ProfileDoc = {
+        id: json.documentId,
+        url: signedUrl,
+        ext,
+        status: "Pending",
+        uploadedAt: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+        label: json.documentLabel || file.name,
+        isSignupDoc: false,
+      };
+      setAllDocuments((prev) => [...prev, newDoc]);
+
+      // Also add to history table
       const newEntry: VerificationEntry = {
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        docType: file.name,
+        docType: json.documentLabel || file.name,
         docIcon: <IdCard size={20} />,
         status: "Pending",
       };
@@ -558,179 +622,207 @@ const IdentityVerification: React.FC = () => {
 
           {/* Document Management */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-            {/* Active Document Card */}
-            <div
-              style={{
-                background: S.surfaceContainerLowest,
-                borderRadius: "0.75rem",
-                padding: "2rem",
-                boxShadow: "0px 12px 32px rgba(151,69,62,0.06)",
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-                <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-                  {/* Document preview */}
-                  <div
-                    style={{
-                      width: "16rem",
-                      height: "11rem",
-                      background: S.surfaceContainerHigh,
-                      borderRadius: "0.75rem",
-                      overflow: "hidden",
-                      position: "relative",
-                      border: `1px solid ${S.outlineVariant}26`,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {profileDoc?.url && profileDoc.ext !== "pdf" ? (
-                      <>
-                        <img
-                          alt="ID document preview"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          src={profileDoc.url}
-                        />
-                        <div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background: `${S.primary}33`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            opacity: 0,
-                            transition: "opacity 0.15s",
-                            backdropFilter: "blur(2px)",
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-                        >
-                          <a
-                            href={profileDoc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              background: S.surfaceContainerLowest,
-                              padding: "0.75rem",
-                              borderRadius: "999px",
-                              color: S.primary,
-                              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-                              display: "flex",
-                              transition: "transform 0.15s",
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-                            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                          >
-                            <ZoomIn size={20} />
-                          </a>
-                        </div>
-                      </>
-                    ) : profileDoc?.url && profileDoc.ext === "pdf" ? (
-                      <a
-                        href={profileDoc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: S.primary, textDecoration: "none" }}
-                      >
-                        <ShieldCheck size={40} />
-                        <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>View PDF</span>
-                      </a>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: S.onSurfaceVariant }}>
-                        <IdCard size={40} />
-                        <span style={{ fontSize: "0.75rem", fontWeight: 500 }}>
-                          {profileDoc ? "Preview unavailable" : "No document"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+            {/* Upload Button */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h2 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0 0 0.5rem" }}>Your Documents</h2>
+                <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", margin: 0 }}>
+                  {allDocuments.length} document{allDocuments.length !== 1 ? "s" : ""} uploaded
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.pdf"
+                style={{ display: "none" }}
+                onChange={handleUpload}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{
+                  padding: "0.875rem 2.5rem",
+                  background: S.primary,
+                  color: S.onPrimary,
+                  borderRadius: "999px",
+                  fontWeight: 700,
+                  fontSize: "0.875rem",
+                  border: "none",
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  boxShadow: `0 4px 16px ${S.primary}33`,
+                  transition: "transform 0.15s",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                  opacity: uploading ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.transform = "scale(1.02)"; }}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                <UploadCloud size={18} />
+                {uploading ? "Uploading…" : "Upload New Document"}
+              </button>
+            </div>
 
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                    <div>
-                      <span
+            {/* Document Cards - Stacked Vertically */}
+            {allDocuments.length === 0 ? (
+              <div
+                style={{
+                  background: S.surfaceContainerLowest,
+                  borderRadius: "0.75rem",
+                  padding: "4rem 2rem",
+                  textAlign: "center",
+                  border: `2px dashed ${S.outlineVariant}4d`,
+                }}
+              >
+                <IdCard size={48} style={{ color: S.onSurfaceVariant, margin: "0 auto 1rem" }} />
+                <h3 style={{ fontSize: "1.125rem", fontWeight: 700, margin: "0 0 0.5rem" }}>No Documents Yet</h3>
+                <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", margin: 0 }}>
+                  Upload your first identity document to get started
+                </p>
+              </div>
+            ) : (
+              allDocuments.map((doc, index) => (
+                <div
+                  key={doc.id || `${doc.label}-${doc.uploadedAt}-${index}`}
+                  style={{
+                    background: S.surfaceContainerLowest,
+                    borderRadius: "0.75rem",
+                    padding: "2rem",
+                    boxShadow: "0px 12px 32px rgba(151,69,62,0.06)",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                    <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+                      {/* Document preview */}
+                      <div
                         style={{
-                          fontSize: "0.625rem",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.15em",
-                          color: S.primary,
+                          width: "16rem",
+                          height: "11rem",
+                          background: S.surfaceContainerHigh,
+                          borderRadius: "0.75rem",
+                          overflow: "hidden",
+                          position: "relative",
+                          border: `1px solid ${S.outlineVariant}26`,
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
-                        Signup Document
-                      </span>
-                      <h3 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.25rem 0" }}>
-                        Government-Issued ID
-                      </h3>
-                      <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", margin: "0.25rem 0" }}>
-                        {profileDoc
-                          ? `Submitted for identity verification • ${profileDoc.ext.toUpperCase()}`
-                          : "No document on file"}
-                      </p>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "1rem" }}>
-                      <div style={{ background: S.surface, padding: "1rem", borderRadius: "0.75rem", border: `1px solid ${S.outlineVariant}1a` }}>
-                        <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, margin: "0 0 0.25rem" }}>
-                          Uploaded On
-                        </p>
-                        <p style={{ fontSize: "0.875rem", fontWeight: 600, margin: 0 }}>
-                          {profileDoc?.uploadedAt ?? "—"}
-                        </p>
+                        {doc.url && doc.ext !== "pdf" ? (
+                          <>
+                            <img
+                              alt={`${doc.label} preview`}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              src={doc.url}
+                            />
+                            <div
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: `${S.primary}33`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                opacity: 0,
+                                transition: "opacity 0.15s",
+                                backdropFilter: "blur(2px)",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
+                            >
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  background: S.surfaceContainerLowest,
+                                  padding: "0.75rem",
+                                  borderRadius: "999px",
+                                  color: S.primary,
+                                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                                  display: "flex",
+                                  transition: "transform 0.15s",
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+                                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                              >
+                                <ZoomIn size={20} />
+                              </a>
+                            </div>
+                          </>
+                        ) : doc.url && doc.ext === "pdf" ? (
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: S.primary, textDecoration: "none" }}
+                          >
+                            <ShieldCheck size={40} />
+                            <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>View PDF</span>
+                          </a>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: S.onSurfaceVariant }}>
+                            <IdCard size={40} />
+                            <span style={{ fontSize: "0.75rem", fontWeight: 500 }}>
+                              Preview unavailable
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ background: S.surface, padding: "1rem", borderRadius: "0.75rem", border: `1px solid ${S.outlineVariant}1a` }}>
-                        <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, margin: "0 0 0.25rem" }}>
-                          Verification Status
-                        </p>
-                        <p style={{
-                          fontSize: "0.875rem",
-                          fontWeight: 600,
-                          margin: 0,
-                          color: profileDoc?.status === "Approved" ? "#1b6b2d" : profileDoc?.status === "Rejected" ? S.error : "#775a00",
-                        }}>
-                          {profileDoc?.status ?? "—"}
-                        </p>
+
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                        <div>
+                          {doc.isSignupDoc && (
+                            <span
+                              style={{
+                                fontSize: "0.625rem",
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.15em",
+                                color: S.primary,
+                                display: "block",
+                                marginBottom: "0.25rem",
+                              }}
+                            >
+                              Signup Document
+                            </span>
+                          )}
+                          <h3 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.25rem 0" }}>
+                            {doc.label}
+                          </h3>
+                          <p style={{ color: S.onSurfaceVariant, fontSize: "0.875rem", margin: "0.25rem 0" }}>
+                            Submitted for identity verification • {doc.ext.toUpperCase()}
+                          </p>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "1rem" }}>
+                          <div style={{ background: S.surface, padding: "1rem", borderRadius: "0.75rem", border: `1px solid ${S.outlineVariant}1a` }}>
+                            <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, margin: "0 0 0.25rem" }}>
+                              Uploaded On
+                            </p>
+                            <p style={{ fontSize: "0.875rem", fontWeight: 600, margin: 0 }}>
+                              {doc.uploadedAt}
+                            </p>
+                          </div>
+                          <div style={{ background: S.surface, padding: "1rem", borderRadius: "0.75rem", border: `1px solid ${S.outlineVariant}1a` }}>
+                            <p style={{ fontSize: "0.625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: S.onSurfaceVariant, margin: "0 0 0.25rem" }}>
+                              Verification Status
+                            </p>
+                            <div style={{ marginTop: "0.25rem" }}>
+                              <StatusBadge status={doc.status} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      style={{ display: "none" }}
-                      onChange={handleUpload}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      style={{
-                        width: "fit-content",
-                        padding: "0.875rem 2.5rem",
-                        background: S.primary,
-                        color: S.onPrimary,
-                        borderRadius: "999px",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        border: "none",
-                        cursor: uploading ? "not-allowed" : "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "0.5rem",
-                        boxShadow: `0 4px 16px ${S.primary}33`,
-                        transition: "transform 0.15s",
-                        fontFamily: "Plus Jakarta Sans, sans-serif",
-                        opacity: uploading ? 0.6 : 1,
-                      }}
-                      onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.transform = "scale(1.02)"; }}
-                      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                    >
-                      <UploadCloud size={18} />
-                      {uploading ? "Uploading…" : "Upload New Document"}
-                    </button>
                   </div>
                 </div>
-              </div>
-            </div>
+              ))
+            )}
+
 
             {/* Verification History */}
             <div
