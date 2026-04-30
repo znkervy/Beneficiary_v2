@@ -6,7 +6,7 @@ import {
   Menu, Bell, LayoutDashboard, CreditCard,
   Landmark, IdCard, User, ShieldCheck, HelpCircle
 } from "lucide-react";
-import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
+import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle, LargeCampaignCard, SmallCampaignCard } from "@/app/shared/beneficiary-shared";
 import { createClient } from "@/utils/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -81,83 +81,6 @@ function BenefitBloom() {
       <div className="absolute inset-1.5 bg-[#fae3e1] rounded-full flex items-center justify-center">
         <span className="text-sm font-bold text-[#97453e]">82%</span>
       </div>
-    </div>
-  );
-}
-
-interface LargeCampaignCardProps {
-  campaign: Campaign;
-}
-
-function LargeCampaignCard({ campaign }: LargeCampaignCardProps) {
-  return (
-    <div className="bg-white rounded-[2rem] p-8 shadow-[0px_12px_32px_rgba(151,69,62,0.06)] border border-[#dac1be]/10">
-      <div className="flex justify-between items-start mb-6">
-        <div className="w-14 h-14 bg-[#fae3e1] rounded-[1.25rem] flex items-center justify-center text-[#97453e] shadow-sm">
-          <span className="material-symbols-outlined text-3xl">{campaign.icon}</span>
-        </div>
-        <span className="px-4 py-1.5 rounded-full bg-[#f4dddc] text-[#79342e] text-[10px] font-extrabold uppercase tracking-widest">
-          {campaign.status}
-        </span>
-      </div>
-      <h4 className="text-xl font-bold text-[#241918] mb-2">{campaign.title}</h4>
-      <p className="text-sm text-[#554240] mb-8 line-clamp-2 font-medium">{campaign.description}</p>
-      <div className="space-y-4">
-        <div className="flex justify-between text-sm font-medium pt-4 border-t border-[#dac1be]/10">
-          <span className="text-[#554240]/70">Total Received</span>
-          <span className="font-extrabold text-[#241918]">{campaign.totalReceived}</span>
-        </div>
-        <a href={`/campaigns/${campaign.id}`} className="w-full py-3 bg-[#f28d83] text-[#6e2621] rounded-[1rem] font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
-          View Details
-          <span className="material-symbols-outlined text-sm">arrow_forward</span>
-        </a>
-      </div>
-    </div>
-  );
-}
-
-interface SmallCampaignCardProps {
-  campaign: Campaign;
-}
-
-function SmallCampaignCard({ campaign }: SmallCampaignCardProps) {
-  const isCompleted = campaign.status === "Completed";
-  return (
-    <div
-      className={[
-        "bg-white rounded-[2rem] p-8 border border-[#dac1be]/10 shadow-sm",
-        isCompleted ? "opacity-90 grayscale-[0.2]" : "",
-      ].join(" ")}
-    >
-      <div className="flex justify-between items-start mb-6">
-        <div
-          className={[
-            "w-12 h-12 bg-[#fae3e1] rounded-lg flex items-center justify-center text-[#97453e]",
-            isCompleted ? "opacity-60" : "",
-          ].join(" ")}
-        >
-          <span className="material-symbols-outlined">{campaign.icon}</span>
-        </div>
-        <span
-          className={[
-            "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest",
-            isCompleted
-              ? "bg-[#ffe9e7] text-[#554240]"
-              : "bg-[#f4dddc] text-[#79342e]",
-          ].join(" ")}
-        >
-          {campaign.status}
-        </span>
-      </div>
-      <h4 className="text-xl font-bold text-[#241918] mb-2">{campaign.title}</h4>
-      <div className="flex justify-between items-center mt-8 pb-4 border-b border-[#dac1be]/10">
-        <span className="text-xs font-bold text-[#554240]/70">Total Received</span>
-        <span className="font-extrabold text-[#241918]">{campaign.totalReceived}</span>
-      </div>
-      <a href={`/campaigns/${campaign.id}`} className="mt-6 text-[#97453e] font-extrabold text-xs inline-flex items-center gap-2 hover:underline">
-        View Details{" "}
-        <span className="material-symbols-outlined text-xs">open_in_new</span>
-      </a>
     </div>
   );
 }

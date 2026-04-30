@@ -333,3 +333,88 @@ export const FormSection = React.memo<{ icon: React.ReactNode; title: string; ch
   )
 );
 FormSection.displayName = "FormSection";
+
+// ─── Campaign Card Components ──────────────────────────────────────────────────
+
+export interface CampaignCardData {
+  id: string;
+  icon: string;
+  status: string;
+  title: string;
+  totalReceived: string;
+}
+
+interface CampaignCardProps {
+  campaign: CampaignCardData;
+}
+
+// Campaign Status Badge
+export const CampaignStatusBadge = React.memo<{ status: string; isCompleted?: boolean }>(
+  ({ status, isCompleted = false }) => (
+    <span
+      className={[
+        "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest",
+        isCompleted
+          ? "bg-[#ffe9e7] text-[#554240]"
+          : "bg-[#f4dddc] text-[#79342e]",
+      ].join(" ")}
+    >
+      {status}
+    </span>
+  )
+);
+CampaignStatusBadge.displayName = "CampaignStatusBadge";
+
+// Large Campaign Card (for featured/main campaigns)
+export const LargeCampaignCard = React.memo<CampaignCardProps>(({ campaign }) => (
+  <div className="bg-white rounded-[2rem] p-8 shadow-[0px_12px_32px_rgba(151,69,62,0.06)] border border-[#dac1be]/10">
+    <div className="flex justify-between items-start mb-6">
+      <div className="w-14 h-14 bg-[#fae3e1] rounded-[1.25rem] flex items-center justify-center text-[#97453e] shadow-sm">
+        <span className="material-symbols-outlined text-3xl">{campaign.icon}</span>
+      </div>
+      <span className="px-4 py-1.5 rounded-full bg-[#f4dddc] text-[#79342e] text-[10px] font-extrabold uppercase tracking-widest">
+        {campaign.status}
+      </span>
+    </div>
+    <h3 className="text-2xl font-bold text-[#241918] mb-6">{campaign.title}</h3>
+    <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#dac1be]/10">
+      <span className="text-sm font-bold text-[#554240]/70">Total Received</span>
+      <span className="font-extrabold text-[#241918]">{campaign.totalReceived}</span>
+    </div>
+    <a href={`/campaigns/${campaign.id}`} className="w-full py-3 bg-[#f28d83] text-[#6e2621] rounded-[1rem] font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
+      View Details
+      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+    </a>
+  </div>
+));
+LargeCampaignCard.displayName = "LargeCampaignCard";
+
+// Small Campaign Card (for grid layout)
+export const SmallCampaignCard = React.memo<CampaignCardProps>(({ campaign }) => {
+  const isCompleted = campaign.status === "Completed";
+  return (
+    <div className="bg-white rounded-[2rem] p-8 border border-[#dac1be]/10 shadow-sm">
+      <div className="flex justify-between items-start mb-6">
+        <div
+          className={[
+            "w-12 h-12 bg-[#fae3e1] rounded-[1.25rem] flex items-center justify-center text-[#97453e]",
+            isCompleted ? "opacity-60" : "",
+          ].join(" ")}
+        >
+          <span className="material-symbols-outlined">{campaign.icon}</span>
+        </div>
+        <CampaignStatusBadge status={campaign.status} isCompleted={isCompleted} />
+      </div>
+      <h4 className="text-xl font-bold text-[#241918] mb-2">{campaign.title}</h4>
+      <div className="flex justify-between items-center mt-8 pb-4 border-b border-[#dac1be]/10">
+        <span className="text-xs font-bold text-[#554240]/70">Total Received</span>
+        <span className="font-extrabold text-[#241918]">{campaign.totalReceived}</span>
+      </div>
+      <a href={`/campaigns/${campaign.id}`} className="mt-6 w-full py-3 bg-[#f28d83] text-[#6e2621] rounded-[1rem] font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
+        View Details
+        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+      </a>
+    </div>
+  );
+});
+SmallCampaignCard.displayName = "SmallCampaignCard";

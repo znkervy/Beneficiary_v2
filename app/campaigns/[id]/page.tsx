@@ -351,6 +351,17 @@ const CampaignDetailsPage: React.FC = () => {
             minHeight: "calc(100vh - 5rem)",
           }}
         >
+          {/* Back Button */}
+          <div className="max-w-7xl mx-auto w-full">
+            <a
+              href="/campaigns"
+              className="inline-flex items-center gap-2 text-[#97453e] font-bold text-sm hover:opacity-70 transition-opacity"
+            >
+              <span className="material-symbols-outlined text-lg">arrow_back</span>
+              Back to Campaigns
+            </a>
+          </div>
+
           {/* Header */}
           <div className="max-w-7xl mx-auto mb-12 w-full">
             <div className="flex items-center gap-3 mb-4">
