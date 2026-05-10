@@ -1,29 +1,28 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
+import { AUTH_PATTERNS } from '../shared/tokens';
 
-@Controller('auth')
+@Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('forgot-password')
-  @HttpCode(200)
-  forgotPassword(@Body() dto: ForgotPasswordDto) {
+  @MessagePattern(AUTH_PATTERNS.FORGOT_PASSWORD)
+  forgotPassword(@Payload() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
   }
 
-  @Post('verify-reset-otp')
-  @HttpCode(200)
-  verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
+  @MessagePattern(AUTH_PATTERNS.VERIFY_OTP)
+  verifyResetOtp(@Payload() dto: VerifyResetOtpDto) {
     return this.authService.verifyResetOtp(dto.email, dto.otp);
   }
 
-  @Post('reset-password')
-  @HttpCode(200)
-  resetPassword(@Body() dto: ResetPasswordDto) {
+  @MessagePattern(AUTH_PATTERNS.RESET_PASSWORD)
+  resetPassword(@Payload() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.reset_token, dto.new_password);
   }
 }
