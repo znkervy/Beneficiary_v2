@@ -50,37 +50,18 @@ export async function GET() {
     });
   }
 
-  const [
-    { data: campaigns, error: campaignsError },
-    { data: disbursements, error: disbursementsError },
-  ] = await Promise.all([
-    admin
-      .from("hc_campaigns")
-      .select("id, title, description, category, status, target_amount, collected_amount")
-      .in("id", campaignIds),
-    admin
-      .from("beneficiary_disbursements")
-      .select("campaign_id, amount")
-      .eq("beneficiary_profile_id", profile.id)
-      .eq("status", "approved"),
-  ]);
+  const { data: campaigns, error: campaignsError } = await admin
+    .from("hc_campaigns")
+    .select("id, title, description, category, status, target_amount, collected_amount")
+    .in("id", campaignIds);
+
   if (campaignsError) {
     console.error("[campaigns] hc_campaigns fetch error:", campaignsError.message);
     return NextResponse.json({ error: "Failed to load campaigns" }, { status: 500 });
   }
-  if (disbursementsError) {
-    console.error("[campaigns] disbursements fetch error:", disbursementsError.message);
-    return NextResponse.json({ error: "Failed to load campaigns" }, { status: 500 });
-  }
-
-  const receivedByCampaign: Record<string, number> = {};
-  let totalSupport = 0;
-  for (const d of disbursements ?? []) {
-    receivedByCampaign[d.campaign_id] = (receivedByCampaign[d.campaign_id] ?? 0) + Number(d.amount);
-    totalSupport += Number(d.amount);
-  }
 
   const activeCount = (campaigns ?? []).filter((c: { status: string }) => c.status === "active").length;
+  const totalSupport = (campaigns ?? []).reduce((sum: number, c: { collected_amount: number }) => sum + Number(c.collected_amount), 0);
 
   return NextResponse.json({
     campaigns: (campaigns ?? []).map((c: {
@@ -95,7 +76,7 @@ export async function GET() {
       status: c.status,
       target_amount: Number(c.target_amount),
       collected_amount: Number(c.collected_amount),
-      total_received: receivedByCampaign[c.id] ?? 0,
+      total_received: Number(c.collected_amount),
     })),
     summary: {
       total_support: totalSupport,

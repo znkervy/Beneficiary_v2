@@ -76,10 +76,6 @@ export async function GET(
     .eq("auth_user_id", campaign.created_by)
     .single();
 
-  const totalReceived = (disbursements ?? [])
-    .filter((d: { status: string }) => d.status === "approved")
-    .reduce((sum: number, d: { amount: number }) => sum + Number(d.amount), 0);
-
   return NextResponse.json({
     campaign: {
       id: campaign.id,
@@ -111,6 +107,6 @@ export async function GET(
       disbursed_at: d.disbursed_at,
       created_at: d.created_at,
     })),
-    total_received: totalReceived,
+    total_received: Number(campaign.collected_amount),
   });
 }
