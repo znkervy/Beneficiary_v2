@@ -8,7 +8,7 @@ import {
   PrimaryBtn, BeneficiaryFooter, FieldLabel, TextInput,
 } from "../shared/beneficiary-shared";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:5000";
 
 // ─── OTP Digit ────────────────────────────────────────────────────────────────
 interface OtpDigitProps {
@@ -59,6 +59,7 @@ OtpDigit.displayName = "OtpDigit";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
+const OTP_DIGIT_IDS = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5'] as const;
 
 type Step = "email" | "otp" | "password";
 
@@ -128,7 +129,7 @@ export default function ForgotPasswordPage() {
   };
 
   // Step 1: Send OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     if (!email.trim()) { setError("Please enter your email address."); return; }
@@ -160,7 +161,7 @@ export default function ForgotPasswordPage() {
   };
 
   // Step 2: Verify OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const otp = digits.join("");
     if (otp.length < OTP_LENGTH) { setError("Please enter the complete 6-digit code."); return; }
@@ -182,7 +183,7 @@ export default function ForgotPasswordPage() {
   };
 
   // Step 3: Reset password
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
@@ -302,11 +303,11 @@ export default function ForgotPasswordPage() {
               </div>
               <div style={{ width: "100%", maxWidth: "28rem", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
-                  {digits.map((digit, i) => (
+                  {OTP_DIGIT_IDS.map((id, i) => (
                     <OtpDigit
-                      key={`otp-digit-${i}`}
+                      key={id}
                       index={i}
-                      value={digit}
+                      value={digits[i]}
                       inputRef={refs.current[i]}
                       onChange={handleChange}
                       onKeyDown={handleKeyDown}
@@ -314,14 +315,14 @@ export default function ForgotPasswordPage() {
                   ))}
                 </div>
                 <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {!canResend ? (
+                  {canResend ? (
+                    <p style={{ fontSize: "0.875rem", color: S.onSurfaceVariant, margin: 0 }}>
+                      Didn&apos;t receive the code?
+                    </p>
+                  ) : (
                     <p style={{ fontSize: "0.875rem", fontWeight: 500, color: `${S.onSurfaceVariant}cc`, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", margin: 0 }}>
                       <Clock size={16} />
                       Resend code in <strong style={{ color: S.primary }}>{formatTime(resendSeconds)}</strong>
-                    </p>
-                  ) : (
-                    <p style={{ fontSize: "0.875rem", color: S.onSurfaceVariant, margin: 0 }}>
-                      Didn&apos;t receive the code?
                     </p>
                   )}
                   <button

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { S, LOGO_SRC, LOGO_WIDTH, LOGO_HEIGHT, BeneficiaryStyle } from "@/app/shared/beneficiary-shared";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // ─── Nav Item Component ───────────────────────────────────────────────────────
 
@@ -68,6 +68,7 @@ const SIDEBAR_W_COLLAPSED = 80;
 
 const InvitationAcceptedPage: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [activeSince, setActiveSince] = useState<number | null>(null);
@@ -75,7 +76,7 @@ const InvitationAcceptedPage: React.FC = () => {
   const toggleSidebar = useCallback(() => setCollapsed((p) => !p), []);
   const sidebarW = collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
-  const campaignName = "Urban Youth Mentorship";
+  const campaignName = searchParams.get("campaign") ?? "this campaign";
 
   useEffect(() => {
     async function fetchData() {

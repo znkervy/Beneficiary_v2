@@ -53,7 +53,7 @@ function CategoryBadge({ label }: { label: string }) {
 
 interface InvitationCardProps {
   invitation: Invitation;
-  onAccept: (id: string) => void;
+  onAccept: (id: string, title: string) => void;
   onDecline: (id: string) => void;
 }
 
@@ -81,7 +81,7 @@ function FeaturedCard({ invitation, onAccept, onDecline }: InvitationCardProps) 
         )}
         <div className="mt-auto flex items-center gap-4">
           <button
-            onClick={() => onAccept(invitation.id)}
+            onClick={() => onAccept(invitation.id, invitation.title)}
             className="bg-[#f28d83] text-[#6e2621] px-8 py-3 rounded-[1rem] font-bold text-sm hover:opacity-90 transition-all active:scale-95"
           >
             Accept Invitation
@@ -124,7 +124,7 @@ function StandardCard({ invitation, onAccept, onDecline }: InvitationCardProps) 
           </span>
         </div>
         <button
-          onClick={() => onAccept(invitation.id)}
+          onClick={() => onAccept(invitation.id, invitation.title)}
           className="w-full py-3 bg-[#f28d83] text-[#6e2621] rounded-[1rem] font-bold text-sm hover:opacity-90 transition-all"
         >
           Accept Invitation
@@ -235,10 +235,10 @@ const CampaignInvitationsPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleAccept = async (invitationId: string) => {
+  const handleAccept = async (invitationId: string, campaignTitle: string) => {
     const res = await fetch(`/api/campaigns/invitations/${invitationId}/accept`, { method: "POST" });
     if (res.ok) {
-      router.push("/campaigns/invitation-accepted");
+      router.push(`/campaigns/invitation-accepted?campaign=${encodeURIComponent(campaignTitle)}`);
     } else {
       alert("Unable to accept invitation. Please try again.");
     }
