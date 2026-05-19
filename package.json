@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"next,backend\" -c \"cyan,yellow\" \"next dev\" \"npm --prefix backend run start:dev\"",
+    "dev": "concurrently -n \"next,backend\" -c \"cyan,yellow\" \"next dev --port 3006\" \"npm --prefix backend run start:dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

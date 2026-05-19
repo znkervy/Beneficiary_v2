@@ -6,7 +6,7 @@ import { HealthModule } from './health.module';
 
 async function bootstrap() {
   const host = process.env.HEALTH_SERVICE_HOST ?? '127.0.0.1';
-  const port = Number(process.env.HEALTH_SERVICE_PORT ?? 4001);
+  const port = Number(process.env.HEALTH_SERVICE_PORT ?? 3008);
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     HealthModule,

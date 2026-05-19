@@ -13,7 +13,7 @@ describe('API Gateway (e2e)', () => {
 
   beforeAll(async () => {
     process.env.HEALTH_SERVICE_HOST = '127.0.0.1';
-    process.env.HEALTH_SERVICE_PORT = '4101';
+    process.env.HEALTH_SERVICE_PORT = '3108';
 
     healthMicroservice =
       await NestFactory.createMicroservice<MicroserviceOptions>(HealthModule, {

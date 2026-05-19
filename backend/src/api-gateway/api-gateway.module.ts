@@ -16,7 +16,7 @@ import { HEALTH_SERVICE } from '../shared/tokens';
           transport: Transport.TCP,
           options: {
             host: process.env.HEALTH_SERVICE_HOST ?? '127.0.0.1',
-            port: Number(process.env.HEALTH_SERVICE_PORT ?? 4001),
+            port: Number(process.env.HEALTH_SERVICE_PORT ?? 3008),
           },
         }),
       },

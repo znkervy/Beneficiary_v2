@@ -68,7 +68,7 @@ npm run dev
 Open:
 
 ```text
-http://localhost:3000
+http://localhost:3006
 ```
 
 The root route automatically redirects:

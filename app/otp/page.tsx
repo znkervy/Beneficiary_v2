@@ -8,7 +8,7 @@ import {
   PrimaryBtn, BeneficiaryFooter, FieldLabel, TextInput,
 } from "../shared/beneficiary-shared";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:5000";
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3007";
 
 // ─── OTP Digit ────────────────────────────────────────────────────────────────
 interface OtpDigitProps {

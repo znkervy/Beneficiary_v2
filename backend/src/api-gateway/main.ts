@@ -20,7 +20,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number(process.env.API_GATEWAY_PORT ?? process.env.PORT ?? 5000);
+  const port = Number(process.env.API_GATEWAY_PORT ?? process.env.PORT ?? 3007);
   await app.listen(port);
 
   Logger.log(
